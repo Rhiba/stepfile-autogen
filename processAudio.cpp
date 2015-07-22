@@ -10,33 +10,33 @@
 
 int main(int argc, char *argv[]) 
 {
-	FILE *fp = fopen("partofme.wav","r"); 
+	if (argc != 2) {
+		std::cout << "Usage: processAudio <path/to/filename.wav>" << std::endl;
+		exit(0);
+	}
+	FILE *fp = fopen(argv[1],"r"); 
+
+	if (fp == NULL) {
+		std::cout << "File does not exist, exiting..." << std::endl;
+		exit(0);
+	} else {
+		std::cout << "File found: " << argv[1] << std::endl << std::endl;
+	}
 
 	char id[4];
 
 	int size = 0;
-	int *pSize = &size;
 
 	short formatTag = 0;
-	short *pFormatTag = &formatTag;
-
 	short channels = 0;
-	short *pChannels = &channels;
-
 	short blockAlign = 0;
-	short *pBlockAlign = &blockAlign;
-
 	short bips = 0;
-	short *pBips = &bips;
 
 	int formatLength = 0;
-	int *pFormatLength = &formatLength;
-
 	int sampleRate = 0;
-	int *pSampleRate = &sampleRate;
-
 	int abyps = 0;
-	int *pAbyps = &abyps;
+
+	int dataSize = 0;
 
 	if (fp) {
 		fread(id, sizeof(char), 4, fp);
@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
 			std::cout << "RIFF match found, continuing." << std::endl;
 			std::cout << "Reading size." << std::endl;
 
-			fread(pSize,sizeof(int),1,fp);
+			fread(&size,sizeof(int),1,fp);
 
 			std::cout << "Size: " << size << std::endl;
 			std::cout << "Checking inner ID match." << std::endl;
@@ -66,12 +66,12 @@ int main(int argc, char *argv[])
 				std::cout << "Found \"" << id[0] << id[1] << id[2] << id[3] << "\"" << std::endl;
 				std::cout << "Reading format length." << std::endl;
 
-				fread(pFormatLength, sizeof(int), 1, fp);
+				fread(&formatLength, sizeof(int), 1, fp);
 				
 				std::cout << "Format length: " << formatLength << std::endl;
 				std::cout << "Reading format tag." << std::endl;
 
-				fread(pFormatTag, sizeof(short), 1, fp);
+				fread(&formatTag, sizeof(short), 1, fp);
 
 				std::cout << "Format tag: " << formatTag;
 
@@ -83,29 +83,60 @@ int main(int argc, char *argv[])
 
 				std::cout << "Reading number of channels." << std::endl;
 
-				fread(pChannels, sizeof(short), 1, fp);
+				fread(&channels, sizeof(short), 1, fp);
 
 				std::cout << "Channels: " << channels << std::endl;
 				std::cout << "Reading sample rate." << std::endl;
 
-				fread(pSampleRate, sizeof(int), 1, fp);
+				fread(&sampleRate, sizeof(int), 1, fp);
 
 				std::cout << "Sample rate: " << sampleRate << std::endl;
 				std::cout << "Reading average bytes per second." << std::endl;
 
-				fread(pAbyps, sizeof(short), 1, fp);
+				fread(&abyps, sizeof(short), 1, fp);
 
 				std::cout << "Average bytes per second: " << abyps << std::endl;
 				std::cout << "Reading block align." << std::endl;
 
-				fread(pBlockAlign, sizeof(short), 1, fp);
+				fread(&blockAlign, sizeof(short), 1, fp);
 
 				std::cout << "Block align: " << blockAlign << std::endl;
 				std::cout << "Reading bits per sample." << std::endl;
 
-				fread(pBips, sizeof(short), 1, fp);
+				fread(&bips, sizeof(short), 1, fp);
 
 				std::cout << "Bits per sample: " << bips << std::endl;
+				std::cout << "Reading in extra 2 bytes." << std::endl;
+				fread(id, sizeof(short), 1, fp);
+
+				std::cout << "Looking for data. \nConfig bytes skipped over:";
+
+				char c;
+				char d[3];
+				bool dataFound = false;
+				int counter = 1;
+
+				while (!dataFound) {
+					fread(&c,sizeof(char),1,fp);
+					if (c == 'd') {
+						fread(d,sizeof(char),3,fp);
+						if (d[0] == 'a' && d[1] == 't' && d[2] == 'a') {
+							std::cout << "\nFound \"data\"" << std::endl;
+							dataFound = true;
+							break;
+						}
+					}
+					std::cout << " [" << counter << "]";
+					counter++;
+				}
+
+				std::cout << "Reading data size." << std::endl;
+
+				fread(&dataSize,sizeof(int),1,fp);
+
+				std::cout << "Data size: " << dataSize << std::endl;
+
+				
 			} else {
 				std::cout << "No WAVE match found, aborting." << std::endl;
 			}
