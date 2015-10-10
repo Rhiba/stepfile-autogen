@@ -214,8 +214,8 @@ int main(int argc, char *argv[])
 
         std::cout << std::endl;
 
-        /* Write our collected data out to a new wav file to test we read it correctly */
         if (testingMode == 1) {
+            //Write collected data out to a new wav file to test we read it correctly
             std::cout << "Creating test WAV." << std::endl;
             std::string name = "test.wav";
             testing::createWav(name,size,formatLength,formatTag,channels,sampleRate,abyps,blockAlign,bips,dataSize,leftChannel,rightChannel);
