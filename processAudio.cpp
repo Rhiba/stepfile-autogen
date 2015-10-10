@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
         ifs.read((char*)&dataSize,sizeof(int));
 
         std::cout << "Data size: " << dataSize << std::endl;
-        std::cout << std::endl << "Beginning data reading." << std::endl;
+        std::cout << std::endl << "Beginning data reading." << std::endl << std::endl;
 
         ChannelType leftChannel;
         ChannelType rightChannel;
@@ -204,7 +204,10 @@ int main(int argc, char *argv[])
         std::cout << std::endl;
 
         /* Write our collected data out to a new wav file to test we read it correctly */
-        testing::createWav("test.wav",size,formatLength,formatTag,channels,sampleRate,abyps,blockAlign,bips,dataSize,leftChannel,rightChannel);
+        std::cout << "Creating test WAV." << std::endl;
+        std::string name = "test.wav";
+        testing::createWav(name,size,formatLength,formatTag,channels,sampleRate,abyps,blockAlign,bips,dataSize,leftChannel,rightChannel);
+        std::cout << "Finished test WAV, written to: " << name << std::endl;
     }
     return 0;
 }
