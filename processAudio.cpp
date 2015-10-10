@@ -1,150 +1,210 @@
 /*
-**
-** A tool for automatically generating step files for Stepmania. 
-** Created by Rhiannon Michelmore (rhiannon.michelmore@gmail.com).
-**
-**/
-#include <stdio.h> //for FILE
-#include <iostream>
-#include <cstring> //for strcmp
+ **
+ ** A tool for automatically generating step files for Stepmania. 
+ ** Created by Rhiannon Michelmore (rhiannon.michelmore@gmail.com).
+ **
+ **/
+#include "processAudio.h"
+#include "test.h"
 
 int main(int argc, char *argv[]) 
 {
-	if (argc != 2) {
-		std::cout << "Usage: processAudio <path/to/filename.wav>" << std::endl;
-		exit(0);
-	}
-	FILE *fp = fopen(argv[1],"r"); 
+    if (argc != 2) {
+        std::cout << "Usage: processAudio <path/to/filename.wav>" << std::endl;
+        exit(0);
+    }
+    std::ifstream ifs(argv[1], std::ifstream::binary);
 
-	if (fp == NULL) {
-		std::cout << "File does not exist, exiting..." << std::endl;
-		exit(0);
-	} else {
-		std::cout << "File found: " << argv[1] << std::endl << std::endl;
-	}
+    if (!(ifs && ifs.is_open())) {
+        std::cout << "File does not exist, exiting..." << std::endl;
+        exit(0);
+    } else {
+        std::cout << "File found: " << argv[1] << std::endl << std::endl;
+    }
 
-	char id[4];
+    char id[4];
 
-	int size = 0;
+    int size = 0;
 
-	short formatTag = 0;
-	short channels = 0;
-	short blockAlign = 0;
-	short bips = 0;
+    short formatTag = 0;
+    short channels = 0;
+    short blockAlign = 0;
+    short bips = 0;
 
-	int formatLength = 0;
-	int sampleRate = 0;
-	int abyps = 0;
+    int formatLength = 0;
+    int sampleRate = 0;
+    int abyps = 0;
 
-	int dataSize = 0;
+    int dataSize = 0; //this is in bytes
 
-	if (fp) {
-		fread(id, sizeof(char), 4, fp);
-		std::cout << "Checking ID match." << std::endl;
-		std::cout << "ID: " << id[0] << id[1] << id[2] << id[3] << std::endl;
-		if (!strcmp(id,"RIFF")) {
+    std::vector<char> otherData;
 
-			std::cout << "RIFF match found, continuing." << std::endl;
-			std::cout << "Reading size." << std::endl;
+    if (!ifs.is_open()) {
+        std::cout << "No RIFF match, aborting." << std::endl;
+        exit(0);
+    }
 
-			fread(&size,sizeof(int),1,fp);
+    for (int i = 0; i < 4; i++) {
+        ifs.get(id[i]);	
+    }
 
-			std::cout << "Size: " << size << std::endl;
-			std::cout << "Checking inner ID match." << std::endl;
+    std::cout << "Checking ID match." << std::endl;
+    std::cout << "ID: " << id << std::endl;
 
-			fread(id, sizeof(char), 4, fp);
+    if (strcmp(id,"RIFF")) {
+        std::cout << "No WAVE match found, aborting." << std::endl;
+        exit(0);
+    }
 
-			std::cout << "ID: " << id[0] << id[1] << id[2] << id[3] << std::endl;
+    std::cout << "RIFF match found, continuing." << std::endl;
+    std::cout << "Reading size." << std::endl;
 
-			if (!strcmp(id,"WAVE")) {
+    ifs.read((char*)&size, sizeof(int)); 
 
-				std::cout << "WAVE match found, continuing." << std::endl;
-				std::cout << "Looking for format." << std::endl;
+    std::cout << "Size: " << size << std::endl;
+    std::cout << "Checking inner ID match." << std::endl;
 
-				fread(id, sizeof(char), 4, fp);
+    for (int i = 0; i < 4; i++) {
+        ifs.get(id[i]);	
+    }
 
-				std::cout << "Found \"" << id[0] << id[1] << id[2] << id[3] << "\"" << std::endl;
-				std::cout << "Reading format length." << std::endl;
+    std::cout << "ID: " << id << std::endl;
+    if (!strcmp(id,"WAVE")) {
 
-				fread(&formatLength, sizeof(int), 1, fp);
-				
-				std::cout << "Format length: " << formatLength << std::endl;
-				std::cout << "Reading format tag." << std::endl;
+        std::cout << "WAVE match found, continuing." << std::endl;
+        std::cout << "Looking for format." << std::endl;
 
-				fread(&formatTag, sizeof(short), 1, fp);
+        for (int i = 0; i < 4; i++) {
+            ifs.get(id[i]);	
+        }
 
-				std::cout << "Format tag: " << formatTag;
+        std::cout << "Found \"" << id << "\"" << std::endl;
+        std::cout << "Reading format length." << std::endl;
 
-				if (formatTag == 1) {
-					std::cout << " (no compression)" << std::endl;
-				} else {
-					std::cout << " (compressed)" << std::endl;
-				}
+        ifs.read((char*)&formatLength, sizeof(int));
 
-				std::cout << "Reading number of channels." << std::endl;
+        std::cout << "Format length: " << formatLength << std::endl;
+        std::cout << "Reading format tag." << std::endl;
 
-				fread(&channels, sizeof(short), 1, fp);
+        ifs.read((char*)&formatTag, sizeof(short));
 
-				std::cout << "Channels: " << channels << std::endl;
-				std::cout << "Reading sample rate." << std::endl;
+        std::cout << "Format tag: " << formatTag;
 
-				fread(&sampleRate, sizeof(int), 1, fp);
+        if (formatTag == 1) {
+            std::cout << " (no compression)" << std::endl;
+        } else {
+            std::cout << " (compressed)" << std::endl;
+        }
 
-				std::cout << "Sample rate: " << sampleRate << std::endl;
-				std::cout << "Reading average bytes per second." << std::endl;
+        std::cout << "Reading number of channels." << std::endl;
 
-				fread(&abyps, sizeof(short), 1, fp);
+        ifs.read((char*)&channels, sizeof(short));
 
-				std::cout << "Average bytes per second: " << abyps << std::endl;
-				std::cout << "Reading block align." << std::endl;
+        std::cout << "Channels: " << channels << std::endl;
+        std::cout << "Reading sample rate." << std::endl;
 
-				fread(&blockAlign, sizeof(short), 1, fp);
+        ifs.read((char*)&sampleRate, sizeof(int));
 
-				std::cout << "Block align: " << blockAlign << std::endl;
-				std::cout << "Reading bits per sample." << std::endl;
+        std::cout << "Sample rate: " << sampleRate << std::endl;
+        std::cout << "Reading average bytes per second." << std::endl;
 
-				fread(&bips, sizeof(short), 1, fp);
+        ifs.read((char*)&abyps, sizeof(int));
 
-				std::cout << "Bits per sample: " << bips << std::endl;
-				std::cout << "Reading in extra 2 bytes." << std::endl;
-				fread(id, sizeof(short), 1, fp);
+        std::cout << "Average bytes per second: " << abyps << std::endl;
+        std::cout << "Reading block align." << std::endl;
 
-				std::cout << "Looking for data. \nConfig bytes skipped over:";
+        ifs.read((char*)&blockAlign, sizeof(short));
 
-				char c;
-				char d[3];
-				bool dataFound = false;
-				int counter = 1;
+        std::cout << "Block align: " << blockAlign << std::endl;
+        std::cout << "Reading bits per sample." << std::endl;
 
-				while (!dataFound) {
-					fread(&c,sizeof(char),1,fp);
-					if (c == 'd') {
-						fread(d,sizeof(char),3,fp);
-						if (d[0] == 'a' && d[1] == 't' && d[2] == 'a') {
-							std::cout << "\nFound \"data\"" << std::endl;
-							dataFound = true;
-							break;
-						}
-					}
-					std::cout << " [" << counter << "]";
-					counter++;
-				}
+        ifs.read((char*)&bips, sizeof(short));
 
-				std::cout << "Reading data size." << std::endl;
+        std::cout << "Bits per sample: " << bips << std::endl;
+        std::cout << "Looking for data. \nConfig bytes skipped over:";
 
-				fread(&dataSize,sizeof(int),1,fp);
+        char c;
+        char d[3];
+        bool dataFound = false;
+        int counter = 1;
 
-				std::cout << "Data size: " << dataSize << std::endl;
+        while (!dataFound) {
+            ifs.get(c);
+            if (c == 'd') {
+                for (int i = 0; i < 3; i++) {
+                    ifs.get(d[i]);
+                }
+                if (d[0] == 'a' && d[1] == 't' && d[2] == 'a') {
+                    std::cout << "\nFound \"data\"" << std::endl;
+                    dataFound = true;
+                    break;
+                } else {
+                    otherData.push_back(c);
+                }
+            } else {
+                otherData.push_back(c);
+            }
+            std::cout << " [" << counter << "]";
+            counter++;
+        }
 
-				
-			} else {
-				std::cout << "No WAVE match found, aborting." << std::endl;
-			}
-		} else {
-			std::cout << "No RIFF match, aborting." << std::endl;
-			exit(0);
-		}
+        std::cout << "Reading data size." << std::endl;
 
-	}
-	return 0;
+        ifs.read((char*)&dataSize,sizeof(int));
+
+        std::cout << "Data size: " << dataSize << std::endl;
+        std::cout << std::endl << "Beginning data reading." << std::endl;
+
+        ChannelType leftChannel;
+        ChannelType rightChannel;
+
+        counter = 0;
+
+        while (!ifs.eof()) {
+            DataType tmp; 
+
+            uint8_t tmp8;
+            int16_t tmp16;
+            int32_t tmp32;
+
+            switch (bips) {
+                case 8:
+                    ifs.read((char*)&tmp8,sizeof(uint8_t));
+                    tmp = tmp8;
+                    break;
+                case 16:
+                    ifs.read((char*)&tmp16,sizeof(int16_t));
+                    tmp = tmp16;
+                    break;
+                case 32:
+                    ifs.read((char*)&tmp32,sizeof(int32_t));
+                    tmp = tmp32;
+                    break;
+                default:
+                    std::cout << "Bits per second value: " << bips << " not supported." <<std::endl;
+                    break;
+            }
+            if (counter % 2 == 0) {
+                leftChannel.push_back(tmp);
+            } else {
+                rightChannel.push_back(tmp);
+            }
+            if (counter == (int)((dataSize/2)/4)) {
+                std::cout << "25%" << std::endl;
+            } else if (counter == (int)((dataSize/2)/2)) {
+                std::cout << "50%" << std::endl;
+            } else if (counter == (int)((dataSize/2)/2) + (int)((dataSize/2)/4)) {
+                std::cout << "75%" << std::endl;
+            } else if (counter == (dataSize/2)){
+                std::cout << "100%" << std::endl;
+            }
+            counter++;
+        }
+
+        std::cout << std::endl;
+
+        /* Write our collected data out to a new wav file to test we read it correctly */
+        testing::createWav("test.wav",size,formatLength,formatTag,channels,sampleRate,abyps,blockAlign,bips,dataSize,leftChannel,rightChannel);
+    }
+    return 0;
 }
