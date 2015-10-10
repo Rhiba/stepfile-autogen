@@ -9,9 +9,20 @@
 
 int main(int argc, char *argv[]) 
 {
-    if (argc != 2) {
-        std::cout << "Usage: processAudio <path/to/filename.wav>" << std::endl;
+    int testingMode = 0; //0 for no testing (no creating test wav), 1 for testing
+    if (argc < 2) {
+        std::cout << "Usage: processAudio <path/to/filename.wav> [flags]" << std::endl;
+        std::cout << "Flags:" << std::endl;
+        std::cout << "-t --test Testing mode. Will create a test WAV file to check input was read correctly." << std::endl;
         exit(0);
+    }
+    if (argc == 3) {
+        if (!strcmp(argv[2],"-t") || !strcmp(argv[2],"--test")) {
+            testingMode = 1;
+        } else {
+            std::cout << "Unrecognised flag, aborting..." << std::endl;
+            exit(0);
+        }
     }
     std::ifstream ifs(argv[1], std::ifstream::binary);
 
@@ -19,7 +30,7 @@ int main(int argc, char *argv[])
         std::cout << "File does not exist, exiting..." << std::endl;
         exit(0);
     } else {
-        std::cout << "File found: " << argv[1] << std::endl << std::endl;
+        std::cout << "File found: " << argv[1] << std::endl;
     }
 
     char id[4];
@@ -204,10 +215,12 @@ int main(int argc, char *argv[])
         std::cout << std::endl;
 
         /* Write our collected data out to a new wav file to test we read it correctly */
-        std::cout << "Creating test WAV." << std::endl;
-        std::string name = "test.wav";
-        testing::createWav(name,size,formatLength,formatTag,channels,sampleRate,abyps,blockAlign,bips,dataSize,leftChannel,rightChannel);
-        std::cout << "Finished test WAV, written to: " << name << std::endl;
+        if (testingMode == 1) {
+            std::cout << "Creating test WAV." << std::endl;
+            std::string name = "test.wav";
+            testing::createWav(name,size,formatLength,formatTag,channels,sampleRate,abyps,blockAlign,bips,dataSize,leftChannel,rightChannel);
+            std::cout << "Finished test WAV, written to: " << name << std::endl;
+        }
     }
     return 0;
 }
