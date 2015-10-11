@@ -48,6 +48,8 @@ int main(int argc, char *argv[])
 
     int dataSize = 0; //this is in bytes
 
+    float bpm = 0;
+
     std::vector<char> otherData;
 
     if (!ifs.is_open()) {
@@ -212,7 +214,8 @@ int main(int argc, char *argv[])
             counter++;
         }
 
-        std::cout << std::endl;
+        std::cout << std::endl << "Starting BPM processing..." << std::endl;
+        bpm = getBPM(leftChannel, rightChannel);
 
         if (testingMode == 1) {
             //Write collected data out to a new wav file to test we read it correctly
@@ -223,4 +226,87 @@ int main(int argc, char *argv[])
         }
     }
     return 0;
+}
+float getBPM(ChannelType &leftChannel, ChannelType &rightChannel) {
+    int e = 0;
+    int index = 0;
+    DataType t = leftChannel.at(0);
+    std::deque<int> E(43);
+    for (auto& y: E) {
+        for (int i = index; i < index + 1024; i++) {
+            if (leftChannel.size() < i || rightChannel.size() < i) {
+                break;
+            }
+            if (t.which() == 0) {
+                e += pow((boost::get<uint8_t>(leftChannel.at(i))),2) + pow((boost::get<uint8_t>(rightChannel.at(i))),2);
+            } else if (t.which() == 1) {
+                e += pow((boost::get<int16_t>(leftChannel.at(i))),2) + pow((boost::get<int16_t>(rightChannel.at(i))),2);
+            } else {
+                e += pow((boost::get<int32_t>(leftChannel.at(i))),2) + pow((boost::get<int32_t>(rightChannel.at(i))),2);
+            }
+        }
+        y = e;
+        index += 1024;
+        e = 0;
+    }
+    for (auto& y: E) {
+        for (int i = index; i < index + 1024; i++) {
+            if (leftChannel.size() < i || rightChannel.size() < i) {
+                break;
+            }
+            if (t.which() == 0) {
+                e += pow((boost::get<uint8_t>(leftChannel.at(i))),2) + pow((boost::get<uint8_t>(rightChannel.at(i))),2);
+            } else if (t.which() == 1) {
+                e += pow((boost::get<int16_t>(leftChannel.at(i))),2) + pow((boost::get<int16_t>(rightChannel.at(i))),2);
+            } else {
+                e += pow((boost::get<int32_t>(leftChannel.at(i))),2) + pow((boost::get<int32_t>(rightChannel.at(i))),2);
+            }
+        }
+        y = e;
+        index += 1024;
+        e = 0;
+    }
+    //reading in 5 second sample
+    int beatCount = 0;
+    float avE = 0;
+    float V = 0;
+    for (int i = 0; i < 5*E.size(); i++) {
+        for (int i = index; i < index + 1024; i++) {
+            if (leftChannel.size() < i || rightChannel.size() < i) {
+                break;
+            }
+            if (t.which() == 0) {
+                e += pow((boost::get<uint8_t>(leftChannel.at(i))),2) + pow((boost::get<uint8_t>(rightChannel.at(i))),2);
+            } else if (t.which() == 1) {
+                e += pow((boost::get<int16_t>(leftChannel.at(i))),2) + pow((boost::get<int16_t>(rightChannel.at(i))),2);
+            } else {
+                e += pow((boost::get<int32_t>(leftChannel.at(i))),2) + pow((boost::get<int32_t>(rightChannel.at(i))),2);
+            }
+        }
+        index += 1024;
+        avE = (1/43);
+        int sum = 0;
+        for (auto& r: E) {
+            sum += pow(r,2);
+        }
+        avE *= sum;
+
+        sum = 0;
+        V = (1/43);
+        for (auto& r: E) {
+            sum += pow((r - avE),2);
+        }
+        V *= sum;
+
+        float C = (-0.0025714*V)+1.5142857;
+
+        E.push_front(e);
+        E.pop_back();
+        if (e > C*avE) {
+            beatCount++;
+        }
+        e = 0;
+    }
+    std::cout << (beatCount*(60/5)) << std::endl;
+    return beatCount*(60/5);
 }
