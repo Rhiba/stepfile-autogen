@@ -6,7 +6,7 @@
  **/
 #include "processAudio.h"
 #include "test.h"
-#include <boost/multiprecision/cpp_int.hpp>
+#include <boost/multiprecision/cpp_dec_float.hpp>
 
 int main(int argc, char *argv[]) 
 {
@@ -229,21 +229,21 @@ int main(int argc, char *argv[])
     return 0;
 }
 float getBPM(ChannelType &leftChannel, ChannelType &rightChannel) {
-    boost::multiprecision::cpp_int e = 0;
+    boost::multiprecision::cpp_dec_float_100 e = 0;
     int index = 0;
     DataType t = leftChannel.at(0);
-    std::deque<boost::multiprecision::cpp_int> E(43);
+    std::deque<boost::multiprecision::cpp_dec_float_100> E(43);
     for (auto& y: E) {
         for (int i = index; i < index + 1024; i++) {
             if (leftChannel.size() < i || rightChannel.size() < i) {
                 break;
             }
             if (t.which() == 0) {
-                e += (boost::multiprecision::cpp_int)(pow((boost::get<uint8_t>(leftChannel.at(i))),2) + pow((boost::get<uint8_t>(rightChannel.at(i))),2));
+                e += (boost::multiprecision::cpp_dec_float_100)(pow((boost::get<uint8_t>(leftChannel.at(i))),2) + pow((boost::get<uint8_t>(rightChannel.at(i))),2));
             } else if (t.which() == 1) {
-                e += (boost::multiprecision::cpp_int)(pow((boost::get<int16_t>(leftChannel.at(i))),2) + pow((boost::get<int16_t>(rightChannel.at(i))),2));
+                e += (boost::multiprecision::cpp_dec_float_100)(pow((boost::get<int16_t>(leftChannel.at(i))),2) + pow((boost::get<int16_t>(rightChannel.at(i))),2));
             } else {
-                e += (boost::multiprecision::cpp_int)(pow((boost::get<int32_t>(leftChannel.at(i))),2) + pow((boost::get<int32_t>(rightChannel.at(i))),2));
+                e += (boost::multiprecision::cpp_dec_float_100)(pow((boost::get<int32_t>(leftChannel.at(i))),2) + pow((boost::get<int32_t>(rightChannel.at(i))),2));
             }
         }
         y = e;
@@ -257,11 +257,11 @@ float getBPM(ChannelType &leftChannel, ChannelType &rightChannel) {
                 break;
             }
             if (t.which() == 0) {
-                e += (boost::multiprecision::cpp_int)(pow((boost::get<uint8_t>(leftChannel.at(i))),2) + pow((boost::get<uint8_t>(rightChannel.at(i))),2));
+                e += (boost::multiprecision::cpp_dec_float_100)(pow((boost::get<uint8_t>(leftChannel.at(i))),2) + pow((boost::get<uint8_t>(rightChannel.at(i))),2));
             } else if (t.which() == 1) {
-                e += (boost::multiprecision::cpp_int)(pow((boost::get<int16_t>(leftChannel.at(i))),2) + pow((boost::get<int16_t>(rightChannel.at(i))),2));
+                e += (boost::multiprecision::cpp_dec_float_100)(pow((boost::get<int16_t>(leftChannel.at(i))),2) + pow((boost::get<int16_t>(rightChannel.at(i))),2));
             } else {
-                e += (boost::multiprecision::cpp_int)(pow((boost::get<int32_t>(leftChannel.at(i))),2) + pow((boost::get<int32_t>(rightChannel.at(i))),2));
+                e += (boost::multiprecision::cpp_dec_float_100)(pow((boost::get<int32_t>(leftChannel.at(i))),2) + pow((boost::get<int32_t>(rightChannel.at(i))),2));
             }
         }
         y = e;
@@ -271,30 +271,30 @@ float getBPM(ChannelType &leftChannel, ChannelType &rightChannel) {
     e=0;
     //reading in 5 second sample
     int beatCount = 0;
-    boost::multiprecision::cpp_int avE = 0;
-    boost::multiprecision::cpp_int V = 0;
+    boost::multiprecision::cpp_dec_float_100 avE = 0;
+    boost::multiprecision::cpp_dec_float_100 V = 0;
     for (int i = 0; i < 5*E.size(); i++) {
         for (int j = index; j < index + 1024; j++) {
             if (leftChannel.size() < j || rightChannel.size() < j) {
                 break;
             }
             if (t.which() == 0) {
-                e += (boost::multiprecision::cpp_int)(pow((boost::get<uint8_t>(leftChannel.at(j))),2) + pow((boost::get<uint8_t>(rightChannel.at(j))),2));
+                e += (boost::multiprecision::cpp_dec_float_100)(pow((boost::get<uint8_t>(leftChannel.at(j))),2) + pow((boost::get<uint8_t>(rightChannel.at(j))),2));
             } else if (t.which() == 1) {
-                e += (boost::multiprecision::cpp_int)(pow((boost::get<int16_t>(leftChannel.at(j))),2) + pow((boost::get<int16_t>(rightChannel.at(j))),2));
+                e += (boost::multiprecision::cpp_dec_float_100)(pow((boost::get<int16_t>(leftChannel.at(j))),2) + pow((boost::get<int16_t>(rightChannel.at(j))),2));
             } else {
-                e += (boost::multiprecision::cpp_int)(pow((boost::get<int32_t>(leftChannel.at(j))),2) + pow((boost::get<int32_t>(rightChannel.at(j))),2));
+                e += (boost::multiprecision::cpp_dec_float_100)(pow((boost::get<int32_t>(leftChannel.at(j))),2) + pow((boost::get<int32_t>(rightChannel.at(j))),2));
             }
         }
         index += 1024;
-        // avE = (boost::multiprecision::cpp_int) (1/43);
-        boost::multiprecision::cpp_int sum = 0;
+        // avE = (boost::multiprecision::cpp_dec_float_100) (1/43);
+        boost::multiprecision::cpp_dec_float_100 sum = 0;
         for (auto& r: E) {
            std::cout << "r " << r << std::endl;
            sum += (r*r);
         }
         std::cout << "sum: " << sum << std::endl;
-        avE = sum * (1/43);
+        avE = sum * ((boost::multiprecision::cpp_dec_float_100) (1.0/43));
         std::cout << "avE: " << avE << std::endl;
 
         sum = 0;
@@ -304,7 +304,7 @@ float getBPM(ChannelType &leftChannel, ChannelType &rightChannel) {
         }
         V = sum*(1/43);
 
-        boost::multiprecision::cpp_int C = ((boost::multiprecision::cpp_int)(-0.0025714)*V)+(boost::multiprecision::cpp_int)1.5142857;
+        boost::multiprecision::cpp_dec_float_100 C = ((boost::multiprecision::cpp_dec_float_100)(-0.0025714)*V)+(boost::multiprecision::cpp_dec_float_100)1.5142857;
 
         E.push_front(e);
         E.pop_back();
