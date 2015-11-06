@@ -6,313 +6,189 @@
  **/
 #include "processAudio.h"
 #include "test.h"
-#include <boost/multiprecision/cpp_dec_float.hpp>
 
-int main(int argc, char *argv[]) 
+//Ensure that structs are packed as they appear here
+#pragma pack(1)
+
+//makes this stuff only visible to this file, won't pollute others
+namespace
 {
-    int testingMode = 0; //0 for no testing (no creating test wav), 1 for testing
-    if (argc < 2) {
-        std::cout << "Usage: processAudio <path/to/filename.wav> [flags]" << std::endl;
-        std::cout << "Flags:" << std::endl;
-        std::cout << "-t --test Testing mode. Will create a test WAV file to check input was read correctly." << std::endl;
-        exit(0);
-    }
-    if (argc == 3) {
-        if (!strcmp(argv[2],"-t") || !strcmp(argv[2],"--test")) {
-            testingMode = 1;
-        } else {
-            std::cout << "Unrecognised flag, aborting..." << std::endl;
-            exit(0);
-        }
-    }
-    std::ifstream ifs(argv[1], std::ifstream::binary);
+	//ostream operator<< for std::array
+	template <typename T, size_t N>
+	std::ostream& operator<< (std::ostream& out, const std::array<T, N>& arr)
+	{
+		if(!arr.empty()){
+			std::copy(arr.begin(), arr.end(), std::ostream_iterator<T>(out));
+		}
+		return out;
+	}
 
-    if (!(ifs && ifs.is_open())) {
-        std::cout << "File does not exist, exiting..." << std::endl;
-        exit(0);
-    } else {
-        std::cout << "File found: " << argv[1] << std::endl;
-    }
-
-    char id[4];
-
-    int size = 0;
-
-    short formatTag = 0;
-    short channels = 0;
-    short blockAlign = 0;
-    short bips = 0;
-
-    int formatLength = 0;
-    int sampleRate = 0;
-    int abyps = 0;
-
-    int dataSize = 0; //this is in bytes
-
-    float bpm = 0;
-
-    std::vector<char> otherData;
-
-    if (!ifs.is_open()) {
-        std::cout << "No RIFF match, aborting." << std::endl;
-        exit(0);
-    }
-
-    for (int i = 0; i < 4; i++) {
-        ifs.get(id[i]);	
-    }
-
-    std::cout << "Checking ID match." << std::endl;
-    std::cout << "ID: " << id << std::endl;
-
-    if (strcmp(id,"RIFF")) {
-        std::cout << "No WAVE match found, aborting." << std::endl;
-        exit(0);
-    }
-
-    std::cout << "RIFF match found, continuing." << std::endl;
-    std::cout << "Reading size." << std::endl;
-
-    ifs.read((char*)&size, sizeof(int)); 
-
-    std::cout << "Size: " << size << std::endl;
-    std::cout << "Checking inner ID match." << std::endl;
-
-    for (int i = 0; i < 4; i++) {
-        ifs.get(id[i]);	
-    }
-
-    std::cout << "ID: " << id << std::endl;
-    if (!strcmp(id,"WAVE")) {
-
-        std::cout << "WAVE match found, continuing." << std::endl;
-        std::cout << "Looking for format." << std::endl;
-
-        for (int i = 0; i < 4; i++) {
-            ifs.get(id[i]);	
-        }
-
-        std::cout << "Found \"" << id << "\"" << std::endl;
-        std::cout << "Reading format length." << std::endl;
-
-        ifs.read((char*)&formatLength, sizeof(int));
-
-        std::cout << "Format length: " << formatLength << std::endl;
-        std::cout << "Reading format tag." << std::endl;
-
-        ifs.read((char*)&formatTag, sizeof(short));
-
-        std::cout << "Format tag: " << formatTag;
-
-        if (formatTag == 1) {
-            std::cout << " (no compression)" << std::endl;
-        } else {
-            std::cout << " (compressed)" << std::endl;
-        }
-
-        std::cout << "Reading number of channels." << std::endl;
-
-        ifs.read((char*)&channels, sizeof(short));
-
-        std::cout << "Channels: " << channels << std::endl;
-        std::cout << "Reading sample rate." << std::endl;
-
-        ifs.read((char*)&sampleRate, sizeof(int));
-
-        std::cout << "Sample rate: " << sampleRate << std::endl;
-        std::cout << "Reading average bytes per second." << std::endl;
-
-        ifs.read((char*)&abyps, sizeof(int));
-
-        std::cout << "Average bytes per second: " << abyps << std::endl;
-        std::cout << "Reading block align." << std::endl;
-
-        ifs.read((char*)&blockAlign, sizeof(short));
-
-        std::cout << "Block align: " << blockAlign << std::endl;
-        std::cout << "Reading bits per sample." << std::endl;
-
-        ifs.read((char*)&bips, sizeof(short));
-
-        std::cout << "Bits per sample: " << bips << std::endl;
-        std::cout << "Looking for data. \nConfig bytes skipped over:";
-
-        char c;
-        char d[3];
-        bool dataFound = false;
-        int counter = 1;
-
-        while (!dataFound) {
-            ifs.get(c);
-            if (c == 'd') {
-                for (int i = 0; i < 3; i++) {
-                    ifs.get(d[i]);
-                }
-                if (d[0] == 'a' && d[1] == 't' && d[2] == 'a') {
-                    std::cout << "\nFound \"data\"" << std::endl;
-                    dataFound = true;
-                    break;
-                } else {
-                    otherData.push_back(c);
-                }
-            } else {
-                otherData.push_back(c);
-            }
-            std::cout << " [" << counter << "]";
-            counter++;
-        }
-
-        std::cout << "Reading data size." << std::endl;
-
-        ifs.read((char*)&dataSize,sizeof(int));
-
-        std::cout << "Data size: " << dataSize << std::endl;
-        std::cout << std::endl << "Beginning data reading." << std::endl << std::endl;
-
-        ChannelType leftChannel;
-        ChannelType rightChannel;
-
-        counter = 0;
-
-        while (!ifs.eof()) {
-            DataType tmp; 
-
-            uint8_t tmp8;
-            int16_t tmp16;
-            int32_t tmp32;
-
-            switch (bips) {
-                case 8:
-                    ifs.read((char*)&tmp8,sizeof(uint8_t));
-                    tmp = tmp8;
-                    break;
-                case 16:
-                    ifs.read((char*)&tmp16,sizeof(int16_t));
-                    tmp = tmp16;
-                    break;
-                case 32:
-                    ifs.read((char*)&tmp32,sizeof(int32_t));
-                    tmp = tmp32;
-                    break;
-                default:
-                    std::cout << "Bits per second value: " << bips << " not supported." <<std::endl;
-                    break;
-            }
-            if (counter % 2 == 0) {
-                leftChannel.push_back(tmp);
-            } else {
-                rightChannel.push_back(tmp);
-            }
-            if (counter == (int)((dataSize/2)/4)) {
-                std::cout << "25%" << std::endl;
-            } else if (counter == (int)((dataSize/2)/2)) {
-                std::cout << "50%" << std::endl;
-            } else if (counter == (int)((dataSize/2)/2) + (int)((dataSize/2)/4)) {
-                std::cout << "75%" << std::endl;
-            } else if (counter == (dataSize/2)){
-                std::cout << "100%" << std::endl;
-            }
-            counter++;
-        }
-
-        std::cout << std::endl << "Starting BPM processing..." << std::endl;
-        bpm = getBPM(leftChannel, rightChannel);
-
-        if (testingMode == 1) {
-            //Write collected data out to a new wav file to test we read it correctly
-            std::cout << "Creating test WAV." << std::endl;
-            std::string name = "test.wav";
-            testing::createWav(name,size,formatLength,formatTag,channels,sampleRate,abyps,blockAlign,bips,dataSize,leftChannel,rightChannel);
-            std::cout << "Finished test WAV, written to: " << name << std::endl;
-        }
-    }
-    return 0;
+	//std::array to_string
+	template <typename T, size_t N>
+	std::string to_string(const std::array<T, N>& arr)
+	{
+		return std::string(arr.begin(), arr.end());
+	}
 }
-float getBPM(ChannelType &leftChannel, ChannelType &rightChannel) {
-    boost::multiprecision::cpp_dec_float_100 e = 0;
-    int index = 0;
-    DataType t = leftChannel.at(0);
-    std::deque<boost::multiprecision::cpp_dec_float_100> E(43);
-    for (auto& y: E) {
-        for (int i = index; i < index + 1024; i++) {
-            if (leftChannel.size() < i || rightChannel.size() < i) {
-                break;
-            }
-            if (t.which() == 0) {
-                e += (boost::multiprecision::cpp_dec_float_100)(pow((boost::get<uint8_t>(leftChannel.at(i))),2) + pow((boost::get<uint8_t>(rightChannel.at(i))),2));
-            } else if (t.which() == 1) {
-                e += (boost::multiprecision::cpp_dec_float_100)(pow((boost::get<int16_t>(leftChannel.at(i))),2) + pow((boost::get<int16_t>(rightChannel.at(i))),2));
-            } else {
-                e += (boost::multiprecision::cpp_dec_float_100)(pow((boost::get<int32_t>(leftChannel.at(i))),2) + pow((boost::get<int32_t>(rightChannel.at(i))),2));
-            }
-        }
-        y = e;
-        index += 1024;
-        e = 0;
-    }
-    e = 0;
-    for (auto& y: E) {
-        for (int i = index; i < index + 1024; i++) {
-            if (leftChannel.size() < i || rightChannel.size() < i) {
-                break;
-            }
-            if (t.which() == 0) {
-                e += (boost::multiprecision::cpp_dec_float_100)(pow((boost::get<uint8_t>(leftChannel.at(i))),2) + pow((boost::get<uint8_t>(rightChannel.at(i))),2));
-            } else if (t.which() == 1) {
-                e += (boost::multiprecision::cpp_dec_float_100)(pow((boost::get<int16_t>(leftChannel.at(i))),2) + pow((boost::get<int16_t>(rightChannel.at(i))),2));
-            } else {
-                e += (boost::multiprecision::cpp_dec_float_100)(pow((boost::get<int32_t>(leftChannel.at(i))),2) + pow((boost::get<int32_t>(rightChannel.at(i))),2));
-            }
-        }
-        y = e;
-        index += 1024;
-        e = 0;
-    }
-    e=0;
-    //reading in 5 second sample
-    int beatCount = 0;
-    boost::multiprecision::cpp_dec_float_100 avE = 0;
-    boost::multiprecision::cpp_dec_float_100 V = 0;
-    for (int i = 0; i < 5*E.size(); i++) {
-        for (int j = index; j < index + 1024; j++) {
-            if (leftChannel.size() < j || rightChannel.size() < j) {
-                break;
-            }
-            if (t.which() == 0) {
-                e += (boost::multiprecision::cpp_dec_float_100)(pow((boost::get<uint8_t>(leftChannel.at(j))),2) + pow((boost::get<uint8_t>(rightChannel.at(j))),2));
-            } else if (t.which() == 1) {
-                e += (boost::multiprecision::cpp_dec_float_100)(pow((boost::get<int16_t>(leftChannel.at(j))),2) + pow((boost::get<int16_t>(rightChannel.at(j))),2));
-            } else {
-                e += (boost::multiprecision::cpp_dec_float_100)(pow((boost::get<int32_t>(leftChannel.at(j))),2) + pow((boost::get<int32_t>(rightChannel.at(j))),2));
-            }
-        }
-        index += 1024;
-        // avE = (boost::multiprecision::cpp_dec_float_100) (1/43);
-        boost::multiprecision::cpp_dec_float_100 sum = 0;
-        for (auto& r: E) {
-           std::cout << "r " << r << std::endl;
-           sum += (r*r);
-        }
-        std::cout << "sum: " << sum << std::endl;
-        avE = sum * ((boost::multiprecision::cpp_dec_float_100) (1.0/43));
-        std::cout << "avE: " << avE << std::endl;
 
-        sum = 0;
-        V = (1/43);
-        for (auto& r: E) {
-            sum += (r - avE)*(r - avE);
-        }
-        V = sum*(1/43);
+int main(int argc, char *argv[])
+{
+	auto testingMode = testMode::noTesting;
+	if (argc < 2) {
+		std::cout << "Usage: processAudio <path/to/filename.wav> [flags]" << std::endl;
+		std::cout << "Flags:" << std::endl;
+		std::cout << "-t --test Testing mode. Will create a test WAV file to check input was read correctly." << std::endl;
+		exit(0);
+	}
+	if (argc == 3) {
+		if (!strcmp(argv[2],"-t") || !strcmp(argv[2],"--test")) {
+			testingMode = testMode::createTestWav;
+		} else {
+			std::cout << "Unrecognised flag, aborting..." << std::endl;
+			exit(0);
+		}
+	}
+	std::ifstream ifs(argv[1], std::ifstream::binary);
 
-        boost::multiprecision::cpp_dec_float_100 C = ((boost::multiprecision::cpp_dec_float_100)(-0.0025714)*V)+(boost::multiprecision::cpp_dec_float_100)1.5142857;
+	if (!(ifs && ifs.is_open())) {
+		std::cout << "File does not exist, exiting..." << std::endl;
+		exit(0);
+	}
 
-        E.push_front(e);
-        E.pop_back();
-        if (e > C*avE) {
-            beatCount++;
-        }
-        e = 0;
-    }
-    std::cout << (beatCount*(60/5)) << std::endl;
-    return beatCount*(60/5);
+	std::cout << "File found: " << argv[1] << std::endl;
+
+	RIFFChunkHeader* mainHeader = nullptr;
+	std::vector<char> mainBuf(sizeof(RIFFChunkHeader));
+	ifs.read(mainBuf.data(), static_cast<long>(mainBuf.size()));
+	mainHeader = reinterpret_cast<RIFFChunkHeader *>(mainBuf.data());
+
+	std::cout << "chunkID: " << mainHeader->chunkId << std::endl;
+	if(to_string(mainHeader->chunkId) != "RIFF")
+		throw std::runtime_error("No RIFF match found! Found: " + to_string(mainHeader->chunkId));
+
+	std::cout << "chunkSize: " << mainHeader->chunkSize << std::endl;
+
+	std::cout << "Format: " << mainHeader->format << std::endl;
+	if (to_string(mainHeader->format) != "WAVE")
+		throw std::runtime_error("No WAVE match found! Found: " + to_string(mainHeader->format));
+
+
+	subChunk1Header* chunk1Header = nullptr;
+	std::vector<char> chunk1Buf(sizeof(subChunk1Header));
+	ifs.read(chunk1Buf.data(), static_cast<long>(chunk1Buf.size()));
+	chunk1Header = reinterpret_cast<subChunk1Header *>(chunk1Buf.data());
+
+	std::cout << "chunkID: \"" << chunk1Header->chunkId << "\"" << std::endl;
+	if(to_string(chunk1Header->chunkId) != "fmt ")
+		throw std::runtime_error("Not an \"fmt \" chunk! Found: " + to_string(chunk1Header->chunkId));
+
+	std::cout << "Format Chunk Size: " << chunk1Header->chunkSize << std::endl;
+
+	std::cout << "Format tag: " << chunk1Header->audioFormat;
+	if (chunk1Header->audioFormat == 1)
+		std::cout << " (no compression)" << std::endl;
+	else
+		std::cout << " (compressed)" << std::endl;
+
+	std::cout << "Number of channels: " << chunk1Header->numChannels << std::endl;
+
+	std::cout << "Sample rate: " << chunk1Header->sampleRate << std::endl;
+
+	std::cout << "Average bytes per second: " << chunk1Header->byteRate << std::endl;
+
+	std::cout << "Block align: " << chunk1Header->blockAlign << std::endl;
+
+	std::cout << "Bits per sample: " << chunk1Header->bitsPerSample << std::endl;
+
+	uint32_t PCMChunkSize = 16;
+	uint32_t excessBytes = chunk1Header->chunkSize - PCMChunkSize;
+	if(excessBytes)
+	{
+		std::cout << "Skipping " << excessBytes << " excess bytes at end of format chunk!" << std::endl;
+		ifs.seekg(excessBytes, std::ios_base::cur);
+	}
+
+
+	subChunk2Header* chunk2Header = nullptr;
+	std::vector<char> chunk2Buf(sizeof(subChunk2Header));
+	while(true)
+	{
+		ifs.read(chunk2Buf.data(), static_cast<long>(chunk2Buf.size()));
+		chunk2Header = reinterpret_cast<subChunk2Header *>(chunk2Buf.data());
+
+		std::cout << "chunkID: \"" << chunk2Header->chunkId << "\"" << std::endl;
+		if(to_string(chunk2Header->chunkId) != "data")
+		{
+				std::cout << "Skipping " << chunk2Header->chunkSize << " (rest of chunk)!" << std::endl;
+				ifs.seekg(chunk2Header->chunkSize, std::ios_base::cur);
+				continue;
+		}
+		//throw std::runtime_error("Not a \"data\" chunk! Found: " + to_string(chunk2Header->chunkId));
+
+		std::cout << "Data Chunk Size: " << chunk2Header->chunkSize << std::endl;
+		break;
+	}
+
+	std::cout << std::endl << "Beginning data reading." << std::endl << std::endl;
+
+	std::vector<ChannelType> channels(chunk1Header->numChannels);
+
+	uint32_t counter = 0;
+
+	while (!ifs.eof())
+	{
+		DataType tmp;
+
+		uint8_t tmp8;
+		int16_t tmp16;
+		int32_t tmp32;
+
+		switch (chunk1Header->bitsPerSample) {
+			case 8:
+				ifs.read(reinterpret_cast<char*>(&tmp8),sizeof(uint8_t));
+				tmp = tmp8;
+				break;
+			case 16:
+				ifs.read(reinterpret_cast<char*>(&tmp16),sizeof(int16_t));
+				tmp = tmp16;
+				break;
+			case 32:
+				ifs.read(reinterpret_cast<char*>(&tmp32),sizeof(int32_t));
+				tmp = tmp32;
+				break;
+			default:
+				std::cout << "Bits per second value: " << chunk1Header->bitsPerSample << " not supported." <<std::endl;
+				break;
+		}
+
+		size_t channelNumber = counter % chunk1Header->numChannels;
+		channels[channelNumber].push_back(tmp);
+
+		auto dataSize = chunk2Header->chunkSize/(chunk1Header->bitsPerSample/8);
+		if (counter == dataSize/4)
+			std::cout << "25%" << std::endl;
+		else if (counter == dataSize/2)
+			std::cout << "50%" << std::endl;
+		else if (counter == (dataSize*3)/4)
+			std::cout << "75%" << std::endl;
+		else if (counter == dataSize)
+			std::cout << "100%" << std::endl;
+
+		counter++;
+	}
+
+	std::cout << std::endl << "Starting BPM processing..." << std::endl;
+	float bpm = getBPM(channels);
+
+	if (testingMode == testMode::createTestWav) {
+		//Write collected data out to a new wav file to test we read it correctly
+		std::cout << "Creating test WAV." << std::endl;
+		std::string name = "test.wav";
+		testing::createWav(name, mainHeader, chunk1Header, chunk2Header, channels);
+		std::cout << "Finished test WAV, written to: " << name << std::endl;
+	}
+}
+
+float getBPM(const std::vector<ChannelType> &channels) {
+	return 1.0;
 }
