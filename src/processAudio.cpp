@@ -190,5 +190,8 @@ int main(int argc, char *argv[])
 }
 
 float getBPM(const std::vector<ChannelType> &channels) {
-	return 1.0;
+	float bpm = 0;
+	std::vector<ChannelType> timeSampleList (channels.size());
+	bpm = 2;
+	return bpm;
 }
