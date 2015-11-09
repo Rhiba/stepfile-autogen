@@ -30,17 +30,7 @@ void testing::createWav(
 
 		for (int i = 0; i < channels.size()*channels[0].size(); i++) {
 			if (indices[currentChannel] < channels[currentChannel].size()) {
-				DataType t = channels[currentChannel][indices[currentChannel]];
-				if (t.which() == 0) {
-					uint8_t tmp8 = boost::get<uint8_t>(channels[currentChannel][indices[currentChannel]]);
-					ofs.write((char*)&tmp8, sizeof(tmp8));
-				} else if (t.which() == 1) {
-					int16_t tmp16 = boost::get<int16_t>(channels[currentChannel][indices[currentChannel]]);
-					ofs.write((char*)&tmp16, sizeof(tmp16));
-				} else {
-					int32_t tmp32 = boost::get<int32_t>(channels[currentChannel][indices[currentChannel]]);
-					ofs.write((char*)&tmp32, sizeof(tmp32));
-				}
+				ofs.write((char*)&channels[currentChannel][indices[currentChannel]],sizeof(int16_t));
 				indices[currentChannel]++;
 			}
 			currentChannel++;

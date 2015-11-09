@@ -4,5 +4,8 @@
 #include <stdint.h>
 #include <deque>
 #include <cmath>
+#include <boost/multiprecision/cpp_dec_float.hpp>
 #include "datatypes.h"
-float getBPM(const std::vector<ChannelType> &channels);
+
+float getBPMFilterBank(const std::vector<ChannelType> &channels, int sampleRate);
+float getBPMFreqSel(const std::vector<ChannelType> &channels, int sampleRate);

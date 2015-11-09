@@ -6,6 +6,7 @@
  **/
 #include "processAudio.h"
 #include "test.h"
+#include "utils.h"
 
 //Ensure that structs are packed as they appear here
 #pragma pack(1)
@@ -137,29 +138,8 @@ int main(int argc, char *argv[])
 
 	while (!ifs.eof())
 	{
-		DataType tmp;
-
-		uint8_t tmp8;
-		int16_t tmp16;
-		int32_t tmp32;
-
-		switch (chunk1Header->bitsPerSample) {
-			case 8:
-				ifs.read(reinterpret_cast<char*>(&tmp8),sizeof(uint8_t));
-				tmp = tmp8;
-				break;
-			case 16:
-				ifs.read(reinterpret_cast<char*>(&tmp16),sizeof(int16_t));
-				tmp = tmp16;
-				break;
-			case 32:
-				ifs.read(reinterpret_cast<char*>(&tmp32),sizeof(int32_t));
-				tmp = tmp32;
-				break;
-			default:
-				std::cout << "Bits per second value: " << chunk1Header->bitsPerSample << " not supported." <<std::endl;
-				break;
-		}
+		uint16_t tmp;
+		ifs.read(reinterpret_cast<char*>(&tmp),sizeof(int16_t));
 
 		size_t channelNumber = counter % chunk1Header->numChannels;
 		channels[channelNumber].push_back(tmp);
@@ -178,7 +158,10 @@ int main(int argc, char *argv[])
 	}
 
 	std::cout << std::endl << "Starting BPM processing..." << std::endl;
-	float bpm = getBPM(channels);
+	float bpm = getBPMFilterBank(channels, chunk1Header->sampleRate);
+	std::cout << "BPM with Filter Bank: " << bpm << std::endl;
+	//float bpm = getBPMFreqSel(channels, chunk1Header->sampleRate);
+	//std::cout << "BPM with Frequency Select: " << bpm << std::endl;
 
 	if (testingMode == testMode::createTestWav) {
 		//Write collected data out to a new wav file to test we read it correctly
@@ -189,9 +172,124 @@ int main(int argc, char *argv[])
 	}
 }
 
-float getBPM(const std::vector<ChannelType> &channels) {
+float getBPMFreqSel(const std::vector<ChannelType> &channels, int sampleRate) {
 	float bpm = 0;
-	std::vector<ChannelType> timeSampleList (channels.size());
-	bpm = 2;
+	int beats = 0;
+	//start 20 seconds in so we can find a beat in case of long intros
+	int startIndex = sampleRate*10;
+	//need to computer the history buffer first (43 values)
+	//historyBuff[subband(0-31)][0-42]
+	std::vector< std::deque<double> > historyBuff(32);
+	int currentIndex = startIndex;
+	for (int i = 0; i < 43; i++) {
+		std::valarray< std::complex<double> > samples(1024);
+		for (int j = 0; j < 1024; j++) {
+			std::complex<double> tmp(channels[0][currentIndex],channels[1][currentIndex]);
+			samples[j] = tmp;
+			currentIndex++;
+		}
+		utils::fft(samples);
+		std::vector<double> freqAms(1024);
+		for (int s = 0; s < 1024; s++) {
+			freqAms[s] = std::abs(samples[s]);
+		}
+		std::vector<double> subband(32);
+		for (int r = 0; r < 32; r++) {
+			double sum = 0;
+			for (int k = r*32; k < (r+1)*32; k++) {
+				sum += freqAms[k];
+			}
+			subband[r] = 0.03125*sum;
+		}
+		for (int d = 0; d < 32; d++) {
+			historyBuff[d].push_front(subband[d]);
+		}
+	}
+	for (int i = 0; i < 43*10; i++) {
+		std::valarray< std::complex<double> > samples(1024);
+		for (int j = 0; j < 1024; j++) {
+			std::complex<double> tmp(channels[0][currentIndex],channels[1][currentIndex]);
+			samples[j] = tmp;
+			currentIndex++;
+		}
+		utils::fft(samples);
+		std::vector<double> freqAms(1024);
+		for (int s = 0; s < 1024; s++) {
+			freqAms[s] = std::abs(samples[s]);
+		}
+		std::vector<double> subband(32);
+		for (int r = 0; r < 32; r++) {
+			double sum = 0;
+			for (int k = r*32; k < (r+1)*32; k++) {
+				sum += freqAms[k];
+			}
+			subband[r] = 0.03125*sum;
+		}
+		for (int d = 0; d < 32; d++) {
+			double Ei = 0;
+			for (int w = 0; w < 43; w++) {
+				Ei += historyBuff[d][w];
+			}
+			Ei *= (1.0/43.0);
+			if (subband[d] > Ei*1.4) {
+				beats++;
+			}
+			historyBuff[d].push_front(subband[d]);
+		}
+	}
+
+	bpm = beats/10.0;
+
+	return bpm;
+}
+
+float getBPMFilterBank(const std::vector<ChannelType> &channels, int sampleRate) {
+	float bpm = 0;
+	if (channels.size() != 2) {
+		std::cout << "Need two channel WAV file, exiting." << std::endl;
+		return 0.0;
+	}
+	//This calculates the number of samples needed for 5 seconds of data from the middle of the song, depending on the sampleRate.
+	int samplesNeeded = utils::round(sampleRate, 1024) * 2.2;
+	std::valarray< std::complex<double> > samplesComplex(samplesNeeded);
+	//Just pick somewhere in the middle of the song to start
+	int indexToStart = (int)(channels[0].size()/3);
+	for (int i = 0; i < samplesNeeded; i++) {
+		std::complex<double> tmp((double)channels[0][i+indexToStart],(double)channels[1][i+indexToStart]);
+		samplesComplex[i] = tmp;
+	}
+	utils::fft(samplesComplex);
+	//want to test bpms from 60 to 200 = 140bpms
+	std::vector< double > E(140);
+	for (int bpmc = 0; bpmc < E.size(); bpmc++) {
+		//as 60 is our min bpm
+		double BPM = bpmc + 60;
+		int Ti = (60/BPM)*sampleRate;
+		std::valarray< std::complex<double> >lj(samplesNeeded);
+		for (int k = 0; k < samplesNeeded; k++) {
+			if (k % Ti == 0) {
+				//this magic number, see AmpMax in tutorial
+				std::complex<double> tmp(32767,32767);
+				lj[k] = tmp;
+			} else {
+				std::complex<double> tmp(0,0);
+				lj[k] = tmp;
+			}
+		}
+		utils::fft(lj);
+		double sum = 0;
+		for (int n = 0; n < samplesNeeded; n++) {
+			double num = std::abs(samplesComplex[n]*lj[n]);
+			sum += num;
+		}
+		E[bpmc] = sum;
+	}
+	double highestFreq = 0;
+	for (int r = 0; r < E.size(); r++) {
+		if (E[r] > highestFreq) {
+			highestFreq = E[r];
+			bpm = r+60;
+		}
+	}
 	return bpm;
 }

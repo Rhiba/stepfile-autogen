@@ -4,9 +4,19 @@
 #include <array>
 #include <vector>
 #include <boost/variant.hpp>
+#include <boost/multiprecision/cpp_dec_float.hpp>
+#include <complex>
+#include <iostream>
+#include <valarray>
 
-typedef boost::variant<uint8_t, int16_t, int32_t> DataType;
-typedef std::vector<DataType> ChannelType;
+typedef std::vector<int16_t> ChannelType;
+
+typedef boost::multiprecision::number< boost::multiprecision::cpp_dec_float<100> >LongDouble;
+
+typedef std::complex<double> Complex;
+typedef std::valarray<Complex> CArray;
+
+const double PI = 3.141592653589793238460;
 
 enum class testMode
 {
