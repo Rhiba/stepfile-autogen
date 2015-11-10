@@ -9,6 +9,7 @@
 #include <iostream>
 #include <valarray>
 
+//WAV FILE 16 BIT ARE SIGNED DAMMIT
 typedef std::vector<int16_t> ChannelType;
 
 typedef boost::multiprecision::number< boost::multiprecision::cpp_dec_float<100> >LongDouble;

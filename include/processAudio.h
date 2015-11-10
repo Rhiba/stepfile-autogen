@@ -7,5 +7,5 @@
 #include <boost/multiprecision/cpp_dec_float.hpp>
 #include "datatypes.h"
 
-float getBPMFilterBank(const std::vector<ChannelType> &channels, int sampleRate);
-float getBPMFreqSel(const std::vector<ChannelType> &channels, int sampleRate);
+float getBPMDWT(const std::vector<ChannelType> &channels, int sampleRate);
+float getBPMLowPass(const std::vector<ChannelType> &channels, int sampleRate);
