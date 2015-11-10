@@ -7,6 +7,7 @@
 #include "processAudio.h"
 #include "test.h"
 #include "utils.h"
+#include "biquad.h"
 
 //Ensure that structs are packed as they appear here
 #pragma pack(1)
@@ -158,10 +159,24 @@ int main(int argc, char *argv[])
 	}
 
 	std::cout << std::endl << "Starting BPM processing..." << std::endl;
-	float bpm = getBPMLowPass(channels, chunk1Header->sampleRate);
-	std::cout << "BPM with Low Pass filter: " << bpm << std::endl;
+	//float bpm = getBPMLowPass(channels, chunk1Header->sampleRate);
+	//std::cout << "BPM with Low Pass filter: " << bpm << std::endl;
 	//float bpm = getBPMFreqSel(channels, chunk1Header->sampleRate);
 	//std::cout << "BPM with Frequency Select: " << bpm << std::endl;
+	std::cout << "Applying biquad low pass filter..." << std::endl;
+	BiquadFilter *filt1 = new BiquadFilter();
+	BiquadFilter *filt2 = new BiquadFilter();
+	filt1->setBiquad(200/((float)chunk1Header->sampleRate),0.707);
+	filt2->setBiquad(200/((float)chunk1Header->sampleRate),0.707);
+	for (int i = 0; i < channels[0].size() && i < channels[1].size(); i++) {
+		float tmp;
+		tmp = (float)channels[0][i];
+		tmp = filt1->process(tmp);
+		channels[0][i] = tmp;
+		tmp = (float)channels[1][i];
+		tmp = filt2->process(tmp);
+		channels[1][i] = tmp;
+	}
 
 	if (testingMode == testMode::createTestWav) {
 		//Write collected data out to a new wav file to test we read it correctly

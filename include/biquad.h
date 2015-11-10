@@ -5,10 +5,11 @@ class BiquadFilter {
 	public:
 		BiquadFilter();
 		float process(float in);
+		void setBiquad(double Fc, double Q);
+		void print();
 	
 	protected:
 		void calcBiquadFilter(void);
-
 		double a0, a1, a2, b1, b2;
 		double sampleFreq, Q;
 		double z1, z2;
