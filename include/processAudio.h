@@ -9,6 +9,6 @@
 #include "datatypes.h"
 
 float getBPMDWT(const std::vector<ChannelType> &channels, int sampleRate);
-float getBPMLowPass(const std::vector<ChannelType> &channels, int sampleRate);
-int calcMostCommon(std::map<long int,long int>& hist);
-void calcDistances(std::deque<long int>& neighbours, std::map<long int,long int>& hist);
+double getBPMLowPass(const std::vector<ChannelType> &channels, int sampleRate);
+double calcMostCommon(std::map<double,long int>& hist);
+void calcDistances(std::deque<long int>& neighbours, std::map<double,long int>& hist);

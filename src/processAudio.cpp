@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
 	}
 
 	std::cout << std::endl << "Starting BPM processing..." << std::endl;
-	float bpm = getBPMLowPass(channels, chunk1Header->sampleRate);
+	double bpm = getBPMLowPass(channels, chunk1Header->sampleRate);
 	std::cout << "BPM with Low Pass filter: " << bpm << std::endl;
 	//float bpm = getBPMFreqSel(channels, chunk1Header->sampleRate);
 	//std::cout << "BPM with Frequency Select: " << bpm << std::endl;
@@ -196,7 +196,7 @@ float getBPMDWT(const std::vector<ChannelType>& channels, int sampleRate) {
 	}
 	return bpm;
 }
-float getBPMLowPass(const std::vector<ChannelType>& channels, int sampleRate) {
+double getBPMLowPass(const std::vector<ChannelType>& channels, int sampleRate) {
 	float bpm = 0;
 	if (channels.size() != 2) {
 		std::cout << "Need two channel WAV file, exiting." << std::endl;
@@ -234,7 +234,7 @@ float getBPMLowPass(const std::vector<ChannelType>& channels, int sampleRate) {
 	double average = utils::average(values);
 	std::deque<long int> neighbours;
 	//map<distance, frequency>
-	std::map<long int,long int> distHist;
+	std::map<double,long int> distHist;
 	//start 5 seconds in
 	for (int idx = utils::round(sampleRate,1024)*5; idx < tmpChannels[0].size() && idx < tmpChannels[1].size(); idx++) {
 		for (int windowPtr = idx; windowPtr < sampleRate+idx && windowPtr < tmpChannels[0].size() && windowPtr < tmpChannels[1].size(); windowPtr++) {
@@ -254,16 +254,16 @@ float getBPMLowPass(const std::vector<ChannelType>& channels, int sampleRate) {
 		idx += sampleRate/4.0;
 	}
 	calcDistances(neighbours,distHist);
-	int distance = calcMostCommon(distHist);
-	return (60.0/((float)distance/(float)sampleRate));
+	double distance = calcMostCommon(distHist);
+	return (60.0/(distance/(double)sampleRate));
 }
 
-void calcDistances(std::deque<long int>& neighbours, std::map<long int,long int>& hist) {
+void calcDistances(std::deque<long int>& neighbours, std::map<double,long int>& hist) {
 	//only want to add new distances for the last thing in neighbours as that is newly added
 	for (int i = 0; i < neighbours.size(); i++) {
 		for (int j = i-5; j <= i+5; j++) {
-			if (j > 0 && j < neighbours.size() && j!=0) {
-				int val = std::abs(neighbours[i] - neighbours[j]);
+			if (j > 0 && j < neighbours.size() && i != j) {
+				double val = std::abs(neighbours[i] - neighbours[j]);
 				if (hist.find(val) == hist.end()) {
 					hist[val] = 1;
 				} else {
@@ -274,17 +274,18 @@ void calcDistances(std::deque<long int>& neighbours, std::map<long int,long int>
 	}
 }
 
-int calcMostCommon(std::map<long int,long int>& hist) {
-	std::map<long int,long int>::iterator it;
-	long int mostCommonDist = 0;
+double calcMostCommon(std::map<double,long int>& hist) {
+	std::map<double,long int>::iterator it;
+	double mostCommonDist = 0;
 	long int mostCommonFreq = 0;
 	for (it = hist.begin(); it != hist.end(); it++) {
-		if (it->first == 0) {
+		if (it->first < 1024 || it->first >= 44100) {
 			continue;
 		} else if (it->second > mostCommonFreq) {
 			mostCommonFreq = it->second;
 			mostCommonDist = it->first;
 			//std::cout << "Most common bpm: " << (60.0/((float)mostCommonDist/(float)44100)) << std::endl;
+			std::cout << "Dist: " << it->first << std::endl;
 		}
 	}
 	return mostCommonDist;
