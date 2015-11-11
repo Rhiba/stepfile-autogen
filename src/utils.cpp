@@ -43,4 +43,11 @@ namespace utils {
 		// scale the numbers
 		x /= x.size();
 	}
+	float average(std::deque<float> values) {
+		float av = 0;
+		for (auto& v:values) {
+			av += v;
+		}
+		return av/((float)values.size());
+	}
 }

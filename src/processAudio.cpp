@@ -159,8 +159,8 @@ int main(int argc, char *argv[])
 	}
 
 	std::cout << std::endl << "Starting BPM processing..." << std::endl;
-	//float bpm = getBPMLowPass(channels, chunk1Header->sampleRate);
-	//std::cout << "BPM with Low Pass filter: " << bpm << std::endl;
+	float bpm = getBPMLowPass(channels, chunk1Header->sampleRate);
+	std::cout << "BPM with Low Pass filter: " << bpm << std::endl;
 	//float bpm = getBPMFreqSel(channels, chunk1Header->sampleRate);
 	//std::cout << "BPM with Frequency Select: " << bpm << std::endl;
 	std::cout << "Applying biquad low pass filter..." << std::endl;
@@ -177,6 +177,7 @@ int main(int argc, char *argv[])
 		tmp = filt2->process(tmp);
 		channels[1][i] = tmp;
 	}
+	//testing::createDataFile(channels);
 
 	if (testingMode == testMode::createTestWav) {
 		//Write collected data out to a new wav file to test we read it correctly
@@ -201,7 +202,90 @@ float getBPMLowPass(const std::vector<ChannelType>& channels, int sampleRate) {
 		std::cout << "Need two channel WAV file, exiting." << std::endl;
 		return 0.0;
 	}
-	return bpm;
+	std::vector<ChannelType> tmpChannels = channels;
+	BiquadFilter *filt1 = new BiquadFilter();
+	BiquadFilter *filt2 = new BiquadFilter();
+	filt1->setBiquad(200/((float)sampleRate),0.707);
+	filt2->setBiquad(200/((float)sampleRate),0.707);
+	for (int i = 0; i < tmpChannels[0].size() && i < tmpChannels[1].size(); i++) {
+		float tmp;
+		tmp = (float)tmpChannels[0][i];
+		tmp = filt1->process(tmp);
+		tmpChannels[0][i] = tmp;
+		tmp = (float)tmpChannels[1][i];
+		tmp = filt2->process(tmp);
+		tmpChannels[1][i] = tmp;
+	}
+	std::deque<float> values(sampleRate);
+	for (int i = 0; i < sampleRate*5; i++) {
+		if (values.size() < 44100) {
+			values.push_front(std::abs((float)tmpChannels[0][i]+(float)tmpChannels[1][i])/2.0);
+		} else {
+			values.pop_back();
+			values.push_front(std::abs((float)tmpChannels[0][i]+tmpChannels[1][i])/2.0);
+		}
+		/*
+		std::cout << "L Channel: " << tmpChannels[0][i] << " R Channel: " << tmpChannels[1][i] << std::endl;
+		std::cout << " Mixed: " << std::abs((float)tmpChannels[0][i] + tmpChannels[1][i])/2.0 << std::endl;
+		*/
+	}
+	//C IS A CONST MULTIPLIER AND CAN BE CHANGED
+	double C = 2;
+	double average = utils::average(values);
+	std::deque<long int> neighbours;
+	//map<distance, frequency>
+	std::map<long int,long int> distHist;
+	//start 5 seconds in
+	for (int idx = utils::round(sampleRate,1024)*5; idx < tmpChannels[0].size() && idx < tmpChannels[1].size(); idx++) {
+		for (int windowPtr = idx; windowPtr < sampleRate+idx && windowPtr < tmpChannels[0].size() && windowPtr < tmpChannels[1].size(); windowPtr++) {
+			double lChannel = (double)tmpChannels[0][windowPtr];
+			double rChannel = (double)tmpChannels[1][windowPtr];
+			double sum = std::abs((lChannel + rChannel) / 2.0);
+			if (sum > average * C) {
+				neighbours.push_back(windowPtr);
+				windowPtr += ((float)sampleRate)/4.0;
+			} else {
+				windowPtr += 1024;
+			}
+			values.pop_back();
+			values.push_front(sum);
+			average = utils::average(values);
+		}
+		idx += sampleRate/4.0;
+	}
+	calcDistances(neighbours,distHist);
+	int distance = calcMostCommon(distHist);
+	return (60.0/((float)distance/(float)sampleRate));
 }
-void lowPassFilter(std::vector<ChannelType>& channels, int sampleRate) {
+
+void calcDistances(std::deque<long int>& neighbours, std::map<long int,long int>& hist) {
+	//only want to add new distances for the last thing in neighbours as that is newly added
+	for (int i = 0; i < neighbours.size(); i++) {
+		for (int j = i-5; j <= i+5; j++) {
+			if (j > 0 && j < neighbours.size() && j!=0) {
+				int val = std::abs(neighbours[i] - neighbours[j]);
+				if (hist.find(val) == hist.end()) {
+					hist[val] = 1;
+				} else {
+					hist[val] += 1;
+				}
+			}
+		}
+	}
+}
+
+int calcMostCommon(std::map<long int,long int>& hist) {
+	std::map<long int,long int>::iterator it;
+	long int mostCommonDist = 0;
+	long int mostCommonFreq = 0;
+	for (it = hist.begin(); it != hist.end(); it++) {
+		if (it->first == 0) {
+			continue;
+		} else if (it->second > mostCommonFreq) {
+			mostCommonFreq = it->second;
+			mostCommonDist = it->first;
+			//std::cout << "Most common bpm: " << (60.0/((float)mostCommonDist/(float)44100)) << std::endl;
+		}
+	}
+	return mostCommonDist;
 }
