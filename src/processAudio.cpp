@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
 	BiquadFilter *filt2 = new BiquadFilter();
 	filt1->setBiquad(200/((float)chunk1Header->sampleRate),0.707);
 	filt2->setBiquad(200/((float)chunk1Header->sampleRate),0.707);
-	for (int i = 0; i < channels[0].size() && i < channels[1].size(); i++) {
+	for (long int i = 0; i < channels[0].size() && i < channels[1].size(); i++) {
 		float tmp;
 		tmp = (float)channels[0][i];
 		tmp = filt1->process(tmp);
@@ -207,7 +207,7 @@ double getBPMLowPass(const std::vector<ChannelType>& channels, int sampleRate) {
 	BiquadFilter *filt2 = new BiquadFilter();
 	filt1->setBiquad(200/((float)sampleRate),0.707);
 	filt2->setBiquad(200/((float)sampleRate),0.707);
-	for (int i = 0; i < tmpChannels[0].size() && i < tmpChannels[1].size(); i++) {
+	for (long int i = 0; i < tmpChannels[0].size() && i < tmpChannels[1].size(); i++) {
 		float tmp;
 		tmp = (float)tmpChannels[0][i];
 		tmp = filt1->process(tmp);
@@ -217,7 +217,7 @@ double getBPMLowPass(const std::vector<ChannelType>& channels, int sampleRate) {
 		tmpChannels[1][i] = tmp;
 	}
 	std::deque<float> values(sampleRate);
-	for (int i = 0; i < sampleRate*5; i++) {
+	for (long int i = 0; i < sampleRate*5; i++) {
 		if (values.size() < 44100) {
 			values.push_front(std::abs((float)tmpChannels[0][i]+(float)tmpChannels[1][i])/2.0);
 		} else {
@@ -230,14 +230,16 @@ double getBPMLowPass(const std::vector<ChannelType>& channels, int sampleRate) {
 		*/
 	}
 	//C IS A CONST MULTIPLIER AND CAN BE CHANGED
+	//THIS NEEDS TO NOT BE HARD CODED
 	double C = 2;
 	double average = utils::average(values);
 	std::deque<long int> neighbours;
 	//map<distance, frequency>
 	std::map<double,long int> distHist;
+	std::vector<Pair> pairs;
 	//start 5 seconds in
-	for (int idx = utils::round(sampleRate,1024)*5; idx < tmpChannels[0].size() && idx < tmpChannels[1].size(); idx++) {
-		for (int windowPtr = idx; windowPtr < sampleRate+idx && windowPtr < tmpChannels[0].size() && windowPtr < tmpChannels[1].size(); windowPtr++) {
+	for (long int idx = utils::round(sampleRate,1024)*5; idx < tmpChannels[0].size() && idx < tmpChannels[1].size(); idx++) {
+		for (long int windowPtr = idx; windowPtr < sampleRate+idx && windowPtr < tmpChannels[0].size() && windowPtr < tmpChannels[1].size(); windowPtr++) {
 			double lChannel = (double)tmpChannels[0][windowPtr];
 			double rChannel = (double)tmpChannels[1][windowPtr];
 			double sum = std::abs((lChannel + rChannel) / 2.0);
@@ -249,19 +251,22 @@ double getBPMLowPass(const std::vector<ChannelType>& channels, int sampleRate) {
 			}
 			values.pop_back();
 			values.push_front(sum);
+			std::pair<long int, double> p(windowPtr,average);
+			pairs.push_back(p);
 			average = utils::average(values);
 		}
 		idx += sampleRate/4.0;
 	}
 	calcDistances(neighbours,distHist);
 	double distance = calcMostCommon(distHist);
+	testing::createDataFile(pairs);
 	return (60.0/(distance/(double)sampleRate));
 }
 
 void calcDistances(std::deque<long int>& neighbours, std::map<double,long int>& hist) {
 	//only want to add new distances for the last thing in neighbours as that is newly added
-	for (int i = 0; i < neighbours.size(); i++) {
-		for (int j = i-5; j <= i+5; j++) {
+	for (long int i = 0; i < neighbours.size(); i++) {
+		for (long int j = i-5; j <= i+5; j++) {
 			if (j > 0 && j < neighbours.size() && i != j) {
 				double val = std::abs(neighbours[i] - neighbours[j]);
 				if (hist.find(val) == hist.end()) {

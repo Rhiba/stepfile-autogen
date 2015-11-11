@@ -5,6 +5,9 @@
 #include <fstream>
 #include <cstring> //for strcmp
 #include <stdint.h>
+#include <sstream>
+#include <algorithm>
+#include <deque>
 #include "datatypes.h"
 
 namespace testing {
@@ -15,6 +18,7 @@ namespace testing {
 		subChunk2Header* subChunk2,
 		std::vector<ChannelType> channels
 	);
+	void createDataFile(::std::vector< ::std::pair<long int, double> > pairs);
 }
 
 

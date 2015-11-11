@@ -8,6 +8,7 @@
 #include <complex>
 #include <iostream>
 #include <valarray>
+#include <utility>
 
 //WAV FILE 16 BIT ARE SIGNED DAMMIT
 typedef std::vector<int16_t> ChannelType;
@@ -17,6 +18,8 @@ typedef boost::multiprecision::number< boost::multiprecision::cpp_dec_float<100>
 typedef std::complex<double> Complex;
 typedef std::valarray<Complex> CArray;
 
+typedef std::pair<long int, double> Pair;
+
 const double PI = 3.141592653589793238460;
 
 enum class testMode
@@ -24,6 +27,7 @@ enum class testMode
 	noTesting = 0,
 	createTestWav = 1
 };
+
 
 struct RIFFChunkHeader
 {

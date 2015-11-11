@@ -1,4 +1,5 @@
 #include "test.h"
+#include "datatypes.h"
 
 void testing::createWav(
 	std::string filename,
@@ -40,4 +41,16 @@ void testing::createWav(
 		}
 	}
 
+}
+void testing::createDataFile(std::vector< std::pair<long int, double> > pairs) {
+	std::ofstream ofs("data");
+	std::sort(pairs.begin(),pairs.end());
+	if (ofs.is_open()) {
+		std::ostringstream ss;
+		for (long int i = 0; i < pairs.size(); i++) {
+			ss << pairs[i].first << " ";
+			ss << pairs[i].second;
+			ofs << ss.str();
+		}
+	}
 }
