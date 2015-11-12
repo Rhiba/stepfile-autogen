@@ -259,6 +259,7 @@ double getBPMLowPass(const std::vector<ChannelType>& channels, int sampleRate) {
 	}
 	calcDistances(neighbours,distHist);
 	double distance = calcMostCommon(distHist);
+	std::cout << "Pairs size: " << pairs.size() << std::endl;
 	testing::createDataFile(pairs);
 	return (60.0/(distance/(double)sampleRate));
 }

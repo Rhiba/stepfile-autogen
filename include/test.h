@@ -18,7 +18,7 @@ namespace testing {
 		subChunk2Header* subChunk2,
 		std::vector<ChannelType> channels
 	);
-	void createDataFile(::std::vector< ::std::pair<long int, double> > pairs);
+	void createDataFile(::std::vector< ::std::pair<long int, double> >& pairs);
 }
 
 

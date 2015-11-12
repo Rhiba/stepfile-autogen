@@ -42,15 +42,18 @@ void testing::createWav(
 	}
 
 }
-void testing::createDataFile(std::vector< std::pair<long int, double> > pairs) {
+void testing::createDataFile(std::vector< std::pair<long int, double> >& pairs) {
 	std::ofstream ofs("data");
-	std::sort(pairs.begin(),pairs.end());
+	std::ostringstream ss;
 	if (ofs.is_open()) {
-		std::ostringstream ss;
-		for (long int i = 0; i < pairs.size(); i++) {
-			ss << pairs[i].first << " ";
-			ss << pairs[i].second;
-			ofs << ss.str();
+		for (auto& val:pairs) {
+			if (val.first < 44100*25 || val.first > 44100*30) {
+				continue;
+			} else {
+				ss << val.first << " ";
+				ss << val.second << "\n";
+				ofs << ss.str();
+			}
 		}
 	}
 }
