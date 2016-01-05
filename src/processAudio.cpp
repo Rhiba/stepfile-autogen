@@ -8,6 +8,7 @@
 #include "test.h"
 #include "utils.h"
 #include "biquad.h"
+#include "genStep.h"
 
 //Ensure that structs are packed as they appear here
 #pragma pack(1)
@@ -35,6 +36,11 @@ namespace
 
 int main(int argc, char *argv[])
 {
+	/*
+	generateStepHeader(1,"hi");
+	generateBaseSteps();
+	return 0;
+	*/
 	auto testingMode = testMode::noTesting;
 	if (argc < 2) {
 		std::cout << "Usage: processAudio <path/to/filename.wav> [flags]" << std::endl;
@@ -159,6 +165,8 @@ int main(int argc, char *argv[])
 	}
 
 	std::cout << std::endl << "Starting BPM processing..." << std::endl;
+	double bpm = getBPMDWT(channels, chunk1Header->sampleRate);
+	/*
 	double bpm = getBPMLowPass(channels, chunk1Header->sampleRate);
 	std::cout << "BPM with Low Pass filter: " << bpm << std::endl;
 	//float bpm = getBPMFreqSel(channels, chunk1Header->sampleRate);
@@ -186,6 +194,7 @@ int main(int argc, char *argv[])
 		testing::createWav(name, mainHeader, chunk1Header, chunk2Header, channels);
 		std::cout << "Finished test WAV, written to: " << name << std::endl;
 	}
+	*/
 }
 
 float getBPMDWT(const std::vector<ChannelType>& channels, int sampleRate) {
@@ -194,6 +203,12 @@ float getBPMDWT(const std::vector<ChannelType>& channels, int sampleRate) {
 		std::cout << "Need two channel WAV file, exiting." << std::endl;
 		return 0.0;
 	}
+	std::vector<double> dwt_output, flag;
+	std::vector<int> lengths;
+	int levels = 2;
+	std::vector<double> sig(channels[0].begin(), channels[0].end());
+	std::string waveletType = "haar";
+	dwt(sig,levels,waveletType,dwt_output,flag,lengths);
 	return bpm;
 }
 double getBPMLowPass(const std::vector<ChannelType>& channels, int sampleRate) {

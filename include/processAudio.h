@@ -5,8 +5,8 @@
 #include <deque>
 #include <map>
 #include <cmath>
-#include <boost/multiprecision/cpp_dec_float.hpp>
 #include "datatypes.h"
+#include "third/wavelet2d.h"
 
 float getBPMDWT(const std::vector<ChannelType> &channels, int sampleRate);
 double getBPMLowPass(const std::vector<ChannelType> &channels, int sampleRate);
