@@ -203,12 +203,106 @@ float getBPMDWT(const std::vector<ChannelType>& channels, int sampleRate) {
 		std::cout << "Need two channel WAV file, exiting." << std::endl;
 		return 0.0;
 	}
-	std::vector<double> dwt_output, flag;
-	std::vector<int> lengths;
-	int levels = 2;
-	std::vector<double> sig(channels[0].begin(), channels[0].end());
-	std::string waveletType = "haar";
-	dwt(sig,levels,waveletType,dwt_output,flag,lengths);
+	//split into frames with power of 2 lasting about 10 seconds
+	std::vector<ChannelType> windows;
+	ChannelType tmp_window;
+	//assume sample rate is 44100, we'll take 131072 samples which is 2.97 seconds and is also a power of 2
+	long int c = 0;
+	for (auto& r: channels[0]) {
+		if (c < 131072) {
+			tmp_window.push_back(r);
+			c++;
+		} else {
+			windows.push_back(tmp_window);
+			c = 0;
+			tmp_window.clear();
+			tmp_window.push_back(r);
+		}
+	}
+	//***** ABOVE THIS LINE WORKS (PROBABLY) *****//
+	//
+	//for each window!
+	for (auto& window: windows) {
+		std::vector<double> dwt_output, flag;
+		std::vector<int> lengths;
+		int levels = 4;
+		std::vector<double> sig(window.begin(), window.end());
+		std::string waveletType = "db4";
+		dwt(sig,levels,waveletType,dwt_output,flag,lengths);
+		long int acc = 0;
+		std::vector<double> AC( window.begin() + acc,window.begin() + acc + lengths[0]);
+		acc += lengths[0];
+		std::vector<double> DC4(window.begin() + acc,window.begin() + acc + lengths[1]);
+		acc += lengths[1];
+		std::vector<double> DC3(window.begin() + acc,window.begin() + acc + lengths[2]);
+		acc += lengths[2];
+		std::vector<double> DC2(window.begin() + acc,window.begin() + acc + lengths[3]);
+		acc += lengths[3];
+		std::vector<double> DC1(window.begin() + acc,window.begin() + acc + lengths[4]);
+		//now need to downsample, then take abs value, then subtract mean
+		std::vector<double> DC1p, DC2p, DC3p, DC4p;
+		downsamp(DC1, 8, DC1p);
+		downsamp(DC2, 4, DC2p);
+		downsamp(DC3, 2, DC3p);
+		downsamp(DC4, 1, DC4p);
+		for (auto& f : DC1p) { f = f < 0 ? -f : f;}
+		for (auto& f : DC2p) { f = f < 0 ? -f : f;}
+		for (auto& f : DC3p) { f = f < 0 ? -f : f;}
+		for (auto& f : DC4p) { f = f < 0 ? -f : f;}
+		double meanDC1p = 0;
+		for (int i = 0; i < DC1p.size(); i++) {
+			meanDC1p += DC1p[i];
+		}
+		meanDC1p /= DC1p.size();
+		double meanDC2p = 0;
+		for (int i = 0; i < DC2p.size(); i++) {
+			meanDC2p += DC2p[i];
+		}
+		meanDC2p /= DC2p.size();
+		double meanDC3p = 0;
+		for (int i = 0; i < DC3p.size(); i++) {
+			meanDC3p += DC3p[i];
+		}
+		meanDC3p /= DC3p.size();
+		double meanDC4p = 0;
+		for (int i = 0; i < DC4p.size(); i++) {
+			meanDC4p += DC4p[i];
+		}
+		meanDC4p /= DC4p.size();
+
+		for (int j = 0; j < DC1p.size(); j++) {
+			DC1p[j] -= meanDC1p;
+		}
+		for (int j = 0; j < DC2p.size(); j++) {
+			DC2p[j] -= meanDC2p;
+		}
+		for (int j = 0; j < DC3p.size(); j++) {
+			DC3p[j] -= meanDC3p;
+		}
+		for (int j = 0; j < DC4p.size(); j++) {
+			DC4p[j] -= meanDC4p;
+		}
+
+		std::vector<double> dcSum;
+		long int t = 0;
+		while (t < std::max(DC1p.size(),max(DC2p.size(),max(DC3p.size(),DC4p.size())))) {
+			dcSum.push_back(0);
+			if (t < DC1p.size()) {
+				dcSum[t] += DC1p[t];
+			}
+			if (t < DC2p.size()) {
+				dcSum[t] += DC2p[t];
+			}
+			if (t < DC3p.size()) {
+				dcSum[t] += DC3p[t];
+			}
+			if (t < DC4p.size()) {
+				dcSum[t] += DC4p[t];
+			}
+			t++;
+		}
+
+	}
 	return bpm;
 }
 double getBPMLowPass(const std::vector<ChannelType>& channels, int sampleRate) {
