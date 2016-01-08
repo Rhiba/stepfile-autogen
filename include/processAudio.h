@@ -5,6 +5,7 @@
 #include <deque>
 #include <map>
 #include <cmath>
+#include <tuple>
 #include "datatypes.h"
 #include "third/wavelet2d.h"
 

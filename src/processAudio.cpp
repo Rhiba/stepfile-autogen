@@ -217,11 +217,13 @@ float getBPMDWT(const std::vector<ChannelType>& channels, int sampleRate) {
 			c = 0;
 			tmp_window.clear();
 			tmp_window.push_back(r);
+			c++;
 		}
 	}
 	//***** ABOVE THIS LINE WORKS (PROBABLY) *****//
 	//
 	//for each window!
+	std::vector< std::pair<double, int> > listOfDistances;
 	for (auto& window: windows) {
 		std::vector<double> dwt_output, flag;
 		std::vector<int> lengths;
@@ -239,70 +241,267 @@ float getBPMDWT(const std::vector<ChannelType>& channels, int sampleRate) {
 		std::vector<double> DC2(window.begin() + acc,window.begin() + acc + lengths[3]);
 		acc += lengths[3];
 		std::vector<double> DC1(window.begin() + acc,window.begin() + acc + lengths[4]);
-		//now need to downsample, then take abs value, then subtract mean
+		//now need to downsample, then take abs value
 		std::vector<double> DC1p, DC2p, DC3p, DC4p;
+		/*
 		downsamp(DC1, 8, DC1p);
 		downsamp(DC2, 4, DC2p);
 		downsamp(DC3, 2, DC3p);
 		downsamp(DC4, 1, DC4p);
-		for (auto& f : DC1p) { f = f < 0 ? -f : f;}
-		for (auto& f : DC2p) { f = f < 0 ? -f : f;}
-		for (auto& f : DC3p) { f = f < 0 ? -f : f;}
-		for (auto& f : DC4p) { f = f < 0 ? -f : f;}
-		double meanDC1p = 0;
-		for (int i = 0; i < DC1p.size(); i++) {
-			meanDC1p += DC1p[i];
-		}
-		meanDC1p /= DC1p.size();
-		double meanDC2p = 0;
-		for (int i = 0; i < DC2p.size(); i++) {
-			meanDC2p += DC2p[i];
-		}
-		meanDC2p /= DC2p.size();
-		double meanDC3p = 0;
-		for (int i = 0; i < DC3p.size(); i++) {
-			meanDC3p += DC3p[i];
-		}
-		meanDC3p /= DC3p.size();
-		double meanDC4p = 0;
-		for (int i = 0; i < DC4p.size(); i++) {
-			meanDC4p += DC4p[i];
-		}
-		meanDC4p /= DC4p.size();
+		*/
+		/* THIS WORKS
+		std::cout << "NORMAL Detail coefficients" << std::endl;
+		std::cout << "len of DC1: " << DC1.size() << " dc2: " << DC2.size() << " dc3: " << DC3.size() << " dc4: " << DC4.size() << std::endl;
+		std::cout << "DOWNSAMPLED:" << std::endl;
+		std::cout << "len of DC1: " << DC1p.size() << " dc2: " << DC2p.size() << " dc3: " << DC3p.size() << " dc4: " << DC4p.size() << std::endl;
+		std::cout << std::endl;
+		*/
+		for (auto& f : DC1) { f = f < 0 ? -f : f;}
+		for (auto& f : DC2) { f = f < 0 ? -f : f;}
+		for (auto& f : DC3) { f = f < 0 ? -f : f;}
+		for (auto& f : DC4) { f = f < 0 ? -f : f;}
 
-		for (int j = 0; j < DC1p.size(); j++) {
-			DC1p[j] -= meanDC1p;
-		}
-		for (int j = 0; j < DC2p.size(); j++) {
-			DC2p[j] -= meanDC2p;
-		}
-		for (int j = 0; j < DC3p.size(); j++) {
-			DC3p[j] -= meanDC3p;
-		}
-		for (int j = 0; j < DC4p.size(); j++) {
-			DC4p[j] -= meanDC4p;
-		}
-
-		std::vector<double> dcSum;
-		long int t = 0;
-		while (t < std::max(DC1p.size(),max(DC2p.size(),max(DC3p.size(),DC4p.size())))) {
-			dcSum.push_back(0);
-			if (t < DC1p.size()) {
-				dcSum[t] += DC1p[t];
+		int windowSize = 44100 * 0.25; //cant get songs over 240bpm or less than 60bpm
+		int stepSize = windowSize/20;
+		//need to store position, times occured, and value for each maxima found.
+		//need to remove any that occur < 18 times after their position leaves the window.
+		std::vector< std::tuple< int, int, double > > listOfMaxima; //position, occurances, value
+		for (int i = 0; i < DC1.size(); i++) {
+			double windowMax = 0;
+			int positionMax = 0;
+			for (int q = i; q < i+windowSize; q++) {
+				double val = DC1[q];
+				if (val > windowMax) {
+					windowMax = val;
+					positionMax = q;
+					q += stepSize;
+				}
 			}
-			if (t < DC2p.size()) {
-				dcSum[t] += DC2p[t];
+			int found = 0;
+			for (int k = listOfMaxima.size()-1; k >= 0; k--) {
+				std::tuple<int,int,double> temp = listOfMaxima[k];
+				if (windowMax == std::get<2>(temp)) {
+					std::get<1>(temp)++;
+					found = 1;
+				}
 			}
-			if (t < DC3p.size()) {
-				dcSum[t] += DC3p[t];
+			if (found == 0) {
+				std::tuple<int,int,double> n(positionMax,1,windowMax);
+				listOfMaxima.push_back(n);
 			}
-			if (t < DC4p.size()) {
-				dcSum[t] += DC4p[t];
-			}
-			t++;
+			//cleaning up old values.
+			listOfMaxima.erase(std::remove_if(listOfMaxima.begin(),listOfMaxima.end(), [i](std::tuple<int,int,double> k) {return std::get<0>(k) < i && std::get<1>(k) < 18;}), listOfMaxima.end());
+			i += stepSize;
 		}
+		//std::cout << "size of peak list: " << listOfMaxima.size() << std::endl;
+		//now need to record distance between peaks
+		//
+		std::vector<int> tmpVals;
+		for (int i = 0; i < listOfMaxima.size(); i++) {
+			for (int j = i - 1; j <= i + 1; j++) {
+				if (j < 0 || j > listOfMaxima.size() || j == 0) {
+				} else {
+					int val = std::abs(std::get<0>(listOfMaxima[i]) - std::get<0>(listOfMaxima[j]));
+					tmpVals.push_back(val);
+				}
+			}
+		}
+		for (int i = 0; i < tmpVals.size(); i++) {
+			int found = 0;
+			int tmp = tmpVals[i];
+			for (int j = 0; j < listOfDistances.size(); j++) {
+				if (listOfDistances[j].first == tmp) {
+					found = 1;
+					listOfDistances[j].second += 1;
+				}
+			}
+			if (found == 0) {
+				std::pair<int,int> n(tmp,1);
+				listOfDistances.push_back(n);
+			}
+		}
+		for (int i = 0; i < DC2.size(); i++) {
+			double windowMax = 0;
+			int positionMax = 0;
+			for (int q = i; q < i+windowSize; q++) {
+				double val = DC2[q];
+				if (val > windowMax) {
+					windowMax = val;
+					positionMax = q;
+					q += stepSize;
+				}
+			}
+			int found = 0;
+			for (int k = listOfMaxima.size()-1; k >= 0; k--) {
+				std::tuple<int,int,double> temp = listOfMaxima[k];
+				if (windowMax == std::get<2>(temp)) {
+					std::get<1>(temp)++;
+					found = 1;
+				}
+			}
+			if (found == 0) {
+				std::tuple<int,int,double> n(positionMax,1,windowMax);
+				listOfMaxima.push_back(n);
+			}
+			//cleaning up old values.
+			listOfMaxima.erase(std::remove_if(listOfMaxima.begin(),listOfMaxima.end(), [i](std::tuple<int,int,double> k) {return std::get<0>(k) < i && std::get<1>(k) < 18;}), listOfMaxima.end());
+			i += stepSize;
+		}
+		//std::cout << "size of peak list: " << listOfMaxima.size() << std::endl;
+		//now need to record distance between peaks
+		//
+		tmpVals.clear();
+		for (int i = 0; i < listOfMaxima.size(); i++) {
+			for (int j = i - 1; j <= i + 1; j++) {
+				if (j < 0 || j > listOfMaxima.size() || j == 0) {
+				} else {
+					int val = std::abs(std::get<0>(listOfMaxima[i]) - std::get<0>(listOfMaxima[j]));
+					tmpVals.push_back(val);
+				}
+			}
+		}
+		for (int i = 0; i < tmpVals.size(); i++) {
+			int found = 0;
+			int tmp = tmpVals[i];
+			for (int j = 0; j < listOfDistances.size(); j++) {
+				if (listOfDistances[j].first == tmp) {
+					found = 1;
+					listOfDistances[j].second += 1;
+				}
+			}
+			if (found == 0) {
+				std::pair<int,int> n(tmp,1);
+				listOfDistances.push_back(n);
+			}
+		}
+		for (int i = 0; i < DC3.size(); i++) {
+			double windowMax = 0;
+			int positionMax = 0;
+			for (int q = i; q < i+windowSize; q++) {
+				double val = DC3[q];
+				if (val > windowMax) {
+					windowMax = val;
+					positionMax = q;
+					q += stepSize;
+				}
+			}
+			int found = 0;
+			for (int k = listOfMaxima.size()-1; k >= 0; k--) {
+				std::tuple<int,int,double> temp = listOfMaxima[k];
+				if (windowMax == std::get<2>(temp)) {
+					std::get<1>(temp)++;
+					found = 1;
+				}
+			}
+			if (found == 0) {
+				std::tuple<int,int,double> n(positionMax,1,windowMax);
+				listOfMaxima.push_back(n);
+			}
+			//cleaning up old values.
+			listOfMaxima.erase(std::remove_if(listOfMaxima.begin(),listOfMaxima.end(), [i](std::tuple<int,int,double> k) {return std::get<0>(k) < i && std::get<1>(k) < 18;}), listOfMaxima.end());
+			i += stepSize;
+		}
+		//std::cout << "size of peak list: " << listOfMaxima.size() << std::endl;
+		//now need to record distance between peaks
+		//
+		tmpVals.clear();
+		for (int i = 0; i < listOfMaxima.size(); i++) {
+			for (int j = i - 1; j <= i + 1; j++) {
+				if (j < 0 || j > listOfMaxima.size() || j == 0) {
+				} else {
+					int val = std::abs(std::get<0>(listOfMaxima[i]) - std::get<0>(listOfMaxima[j]));
+					tmpVals.push_back(val);
+				}
+			}
+		}
+		for (int i = 0; i < tmpVals.size(); i++) {
+			int found = 0;
+			int tmp = tmpVals[i];
+			for (int j = 0; j < listOfDistances.size(); j++) {
+				if (listOfDistances[j].first == tmp) {
+					found = 1;
+					listOfDistances[j].second += 1;
+				}
+			}
+			if (found == 0) {
+				std::pair<int,int> n(tmp,1);
+				listOfDistances.push_back(n);
+			}
+		}
+		for (int i = 0; i < DC4.size(); i++) {
+			double windowMax = 0;
+			int positionMax = 0;
+			for (int q = i; q < i+windowSize; q++) {
+				double val = DC4[q];
+				if (val > windowMax) {
+					windowMax = val;
+					positionMax = q;
+					q += stepSize;
+				}
+			}
+			int found = 0;
+			for (int k = listOfMaxima.size()-1; k >= 0; k--) {
+				std::tuple<int,int,double> temp = listOfMaxima[k];
+				if (windowMax == std::get<2>(temp)) {
+					std::get<1>(temp)++;
+					found = 1;
+				}
+			}
+			if (found == 0) {
+				std::tuple<int,int,double> n(positionMax,1,windowMax);
+				listOfMaxima.push_back(n);
+			}
+			//cleaning up old values.
+			listOfMaxima.erase(std::remove_if(listOfMaxima.begin(),listOfMaxima.end(), [i](std::tuple<int,int,double> k) {return std::get<0>(k) < i && std::get<1>(k) < 18;}), listOfMaxima.end());
+			i += stepSize;
+		}
+		//std::cout << "size of peak list: " << listOfMaxima.size() << std::endl;
+		//now need to record distance between peaks
+		//
+		tmpVals.clear();
+		for (int i = 0; i < listOfMaxima.size(); i++) {
+			for (int j = i - 1; j <= i + 1; j++) {
+				if (j < 0 || j > listOfMaxima.size() || j == 0) {
+				} else {
+					int val = std::abs(std::get<0>(listOfMaxima[i]) - std::get<0>(listOfMaxima[j]));
+					tmpVals.push_back(val);
+				}
+			}
+		}
+		for (int i = 0; i < tmpVals.size(); i++) {
+			int found = 0;
+			int tmp = tmpVals[i];
+			for (int j = 0; j < listOfDistances.size(); j++) {
+				if (listOfDistances[j].first == tmp) {
+					found = 1;
+					listOfDistances[j].second += 1;
+				}
+			}
+			if (found == 0) {
+				std::pair<int,int> n(tmp,1);
+				listOfDistances.push_back(n);
+			}
+		}
+		std::cout << "looping" << std::endl;
 
 	}
+
+	std::cout << "size of distance list: " << listOfDistances.size() << std::endl;
+	//get most frequent distance
+	int maxDist = 0;
+	int maxFreq = 0;
+	for (int i = 0; i < listOfDistances.size(); i++) {
+		if (listOfDistances[i].second > 5 && listOfDistances[i].first > 551 * 1.2) {
+			std::cout << listOfDistances[i].second << " value: " << listOfDistances[i].first << std::endl;
+		}
+		if (listOfDistances[i].second > maxFreq && listOfDistances[i].first != 0 && listOfDistances[i].first > 551*1.2) {
+			maxDist = listOfDistances[i].first;
+			maxFreq = listOfDistances[i].second;
+		}
+	}
+	std::cout << "most frequent distance: " << maxDist << std::endl;
+	bpm = (44100.0/(maxDist*16))*60;
+	std::cout << "bpm: " << bpm << std::endl;
 	return bpm;
 }
 double getBPMLowPass(const std::vector<ChannelType>& channels, int sampleRate) {
