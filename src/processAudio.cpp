@@ -36,11 +36,10 @@ namespace
 
 int main(int argc, char *argv[])
 {
-	/*
+	makeDirs("/var/tmp/dcs-get/stepmania-4eab6ff/stepmania-5.0/Songs/Creations");
 	generateStepHeader(1,"hi");
 	generateBaseSteps();
 	return 0;
-	*/
 	auto testingMode = testMode::noTesting;
 	if (argc < 2) {
 		std::cout << "Usage: processAudio <path/to/filename.wav> [flags]" << std::endl;
@@ -290,7 +289,7 @@ float getBPMDWT(const std::vector<ChannelType>& channels, int sampleRate) {
 				listOfMaxima.push_back(n);
 			}
 			//cleaning up old values.
-			listOfMaxima.erase(std::remove_if(listOfMaxima.begin(),listOfMaxima.end(), [i](std::tuple<int,int,double> k) {return std::get<0>(k) < i && std::get<1>(k) < 18;}), listOfMaxima.end());
+			listOfMaxima.erase(std::remove_if(listOfMaxima.begin(),listOfMaxima.end(), [i](std::tuple<int,int,double> k) {return std::get<0>(k) < i && std::get<1>(k) < 19;}), listOfMaxima.end());
 			i += stepSize;
 		}
 		//std::cout << "size of peak list: " << listOfMaxima.size() << std::endl;
@@ -344,7 +343,7 @@ float getBPMDWT(const std::vector<ChannelType>& channels, int sampleRate) {
 				listOfMaxima.push_back(n);
 			}
 			//cleaning up old values.
-			listOfMaxima.erase(std::remove_if(listOfMaxima.begin(),listOfMaxima.end(), [i](std::tuple<int,int,double> k) {return std::get<0>(k) < i && std::get<1>(k) < 18;}), listOfMaxima.end());
+			listOfMaxima.erase(std::remove_if(listOfMaxima.begin(),listOfMaxima.end(), [i](std::tuple<int,int,double> k) {return std::get<0>(k) < i && std::get<1>(k) < 19;}), listOfMaxima.end());
 			i += stepSize;
 		}
 		//std::cout << "size of peak list: " << listOfMaxima.size() << std::endl;
@@ -398,7 +397,7 @@ float getBPMDWT(const std::vector<ChannelType>& channels, int sampleRate) {
 				listOfMaxima.push_back(n);
 			}
 			//cleaning up old values.
-			listOfMaxima.erase(std::remove_if(listOfMaxima.begin(),listOfMaxima.end(), [i](std::tuple<int,int,double> k) {return std::get<0>(k) < i && std::get<1>(k) < 18;}), listOfMaxima.end());
+			listOfMaxima.erase(std::remove_if(listOfMaxima.begin(),listOfMaxima.end(), [i](std::tuple<int,int,double> k) {return std::get<0>(k) < i && std::get<1>(k) < 19;}), listOfMaxima.end());
 			i += stepSize;
 		}
 		//std::cout << "size of peak list: " << listOfMaxima.size() << std::endl;
@@ -452,7 +451,7 @@ float getBPMDWT(const std::vector<ChannelType>& channels, int sampleRate) {
 				listOfMaxima.push_back(n);
 			}
 			//cleaning up old values.
-			listOfMaxima.erase(std::remove_if(listOfMaxima.begin(),listOfMaxima.end(), [i](std::tuple<int,int,double> k) {return std::get<0>(k) < i && std::get<1>(k) < 18;}), listOfMaxima.end());
+			listOfMaxima.erase(std::remove_if(listOfMaxima.begin(),listOfMaxima.end(), [i](std::tuple<int,int,double> k) {return std::get<0>(k) < i && std::get<1>(k) < 19;}), listOfMaxima.end());
 			i += stepSize;
 		}
 		//std::cout << "size of peak list: " << listOfMaxima.size() << std::endl;
