@@ -36,19 +36,16 @@ namespace
 
 int main(int argc, char *argv[])
 {
-	makeDirs("/var/tmp/dcs-get/stepmania-4eab6ff/stepmania-5.0/Songs/Creations");
-	generateStepHeader(1,"hi");
-	generateBaseSteps();
-	return 0;
+	srand(time(NULL));
 	auto testingMode = testMode::noTesting;
-	if (argc < 2) {
-		std::cout << "Usage: processAudio <path/to/filename.wav> [flags]" << std::endl;
+	if (argc < 5) {
+		std::cout << "Usage: processAudio <path/to/filename.audio> <path/to/stepmania/Songs> <SongName> <Artist> [flags]" << std::endl;
 		std::cout << "Flags:" << std::endl;
 		std::cout << "-t --test Testing mode. Will create a test WAV file to check input was read correctly." << std::endl;
 		exit(0);
 	}
-	if (argc == 3) {
-		if (!strcmp(argv[2],"-t") || !strcmp(argv[2],"--test")) {
+	if (argc == 6) {
+		if (!strcmp(argv[5],"-t") || !strcmp(argv[5],"--test")) {
 			testingMode = testMode::createTestWav;
 		} else {
 			std::cout << "Unrecognised flag, aborting..." << std::endl;
@@ -165,27 +162,7 @@ int main(int argc, char *argv[])
 
 	std::cout << std::endl << "Starting BPM processing..." << std::endl;
 	double bpm = getBPMDWT(channels, chunk1Header->sampleRate);
-	/*
-	double bpm = getBPMLowPass(channels, chunk1Header->sampleRate);
-	std::cout << "BPM with Low Pass filter: " << bpm << std::endl;
-	//float bpm = getBPMFreqSel(channels, chunk1Header->sampleRate);
-	//std::cout << "BPM with Frequency Select: " << bpm << std::endl;
-	std::cout << "Applying biquad low pass filter..." << std::endl;
-	BiquadFilter *filt1 = new BiquadFilter();
-	BiquadFilter *filt2 = new BiquadFilter();
-	filt1->setBiquad(200/((float)chunk1Header->sampleRate),0.707);
-	filt2->setBiquad(200/((float)chunk1Header->sampleRate),0.707);
-	for (long int i = 0; i < channels[0].size() && i < channels[1].size(); i++) {
-		float tmp;
-		tmp = (float)channels[0][i];
-		tmp = filt1->process(tmp);
-		channels[0][i] = tmp;
-		tmp = (float)channels[1][i];
-		tmp = filt2->process(tmp);
-		channels[1][i] = tmp;
-	}
-	//testing::createDataFile(channels);
-
+	std::cout << "Got bpm: " << std::to_string(bpm) << std::endl;
 	if (testingMode == testMode::createTestWav) {
 		//Write collected data out to a new wav file to test we read it correctly
 		std::cout << "Creating test WAV." << std::endl;
@@ -193,7 +170,31 @@ int main(int argc, char *argv[])
 		testing::createWav(name, mainHeader, chunk1Header, chunk2Header, channels);
 		std::cout << "Finished test WAV, written to: " << name << std::endl;
 	}
-	*/
+	std::string pathToStepmania = argv[2];
+	std::cout << std::endl << "Setting Stepmania songs path: " << pathToStepmania << std::endl;
+	std::string audioPath = argv[1];
+	std::cout << "Finding audio file extension... ";
+	std::string extension = "";
+	for (int i = audioPath.size() - 1; i >= 0; i--) {
+		if (audioPath[i] == '.') {
+			extension = audioPath[i] + extension;
+			break;
+		} else {
+			extension = audioPath[i] + extension;
+		}
+	}
+	std::cout << extension << std::endl;
+	std::string songName = argv[3];
+	std::cout << "Setting song name: " << songName << std::endl;
+	std::string artist = argv[4];
+	std::cout << "Setting artist: " << artist << std::endl;
+	makeDirs(pathToStepmania, songName);
+	copyAudio(audioPath,pathToStepmania,songName);
+	generateStepHeader(pathToStepmania,songName, bpm, artist, songName + extension,-0.675);
+	float songLen = channels[0].size() / 44100.0;
+	std::cout << "Song length (seconds): " << std::to_string(songLen) << std::endl;
+	generateBaseSteps(pathToStepmania + "/Creations/" + songName + "/" + songName + ".sm",songLen,bpm);
+	return 0;
 }
 
 float getBPMDWT(const std::vector<ChannelType>& channels, int sampleRate) {
@@ -247,13 +248,6 @@ float getBPMDWT(const std::vector<ChannelType>& channels, int sampleRate) {
 		downsamp(DC2, 4, DC2p);
 		downsamp(DC3, 2, DC3p);
 		downsamp(DC4, 1, DC4p);
-		*/
-		/* THIS WORKS
-		std::cout << "NORMAL Detail coefficients" << std::endl;
-		std::cout << "len of DC1: " << DC1.size() << " dc2: " << DC2.size() << " dc3: " << DC3.size() << " dc4: " << DC4.size() << std::endl;
-		std::cout << "DOWNSAMPLED:" << std::endl;
-		std::cout << "len of DC1: " << DC1p.size() << " dc2: " << DC2p.size() << " dc3: " << DC3p.size() << " dc4: " << DC4p.size() << std::endl;
-		std::cout << std::endl;
 		*/
 		for (auto& f : DC1) { f = f < 0 ? -f : f;}
 		for (auto& f : DC2) { f = f < 0 ? -f : f;}
@@ -346,7 +340,6 @@ float getBPMDWT(const std::vector<ChannelType>& channels, int sampleRate) {
 			listOfMaxima.erase(std::remove_if(listOfMaxima.begin(),listOfMaxima.end(), [i](std::tuple<int,int,double> k) {return std::get<0>(k) < i && std::get<1>(k) < 19;}), listOfMaxima.end());
 			i += stepSize;
 		}
-		//std::cout << "size of peak list: " << listOfMaxima.size() << std::endl;
 		//now need to record distance between peaks
 		//
 		tmpVals.clear();
@@ -400,9 +393,6 @@ float getBPMDWT(const std::vector<ChannelType>& channels, int sampleRate) {
 			listOfMaxima.erase(std::remove_if(listOfMaxima.begin(),listOfMaxima.end(), [i](std::tuple<int,int,double> k) {return std::get<0>(k) < i && std::get<1>(k) < 19;}), listOfMaxima.end());
 			i += stepSize;
 		}
-		//std::cout << "size of peak list: " << listOfMaxima.size() << std::endl;
-		//now need to record distance between peaks
-		//
 		tmpVals.clear();
 		for (int i = 0; i < listOfMaxima.size(); i++) {
 			for (int j = i - 1; j <= i + 1; j++) {
@@ -454,9 +444,7 @@ float getBPMDWT(const std::vector<ChannelType>& channels, int sampleRate) {
 			listOfMaxima.erase(std::remove_if(listOfMaxima.begin(),listOfMaxima.end(), [i](std::tuple<int,int,double> k) {return std::get<0>(k) < i && std::get<1>(k) < 19;}), listOfMaxima.end());
 			i += stepSize;
 		}
-		//std::cout << "size of peak list: " << listOfMaxima.size() << std::endl;
 		//now need to record distance between peaks
-		//
 		tmpVals.clear();
 		for (int i = 0; i < listOfMaxima.size(); i++) {
 			for (int j = i - 1; j <= i + 1; j++) {
@@ -481,26 +469,21 @@ float getBPMDWT(const std::vector<ChannelType>& channels, int sampleRate) {
 				listOfDistances.push_back(n);
 			}
 		}
-		std::cout << "looping" << std::endl;
-
+		std::cout << ".";
+		std::cout.flush();
 	}
+	std::cout << std::endl;
 
-	std::cout << "size of distance list: " << listOfDistances.size() << std::endl;
 	//get most frequent distance
 	int maxDist = 0;
 	int maxFreq = 0;
 	for (int i = 0; i < listOfDistances.size(); i++) {
-		if (listOfDistances[i].second > 5 && listOfDistances[i].first > 551 * 1.2) {
-			std::cout << listOfDistances[i].second << " value: " << listOfDistances[i].first << std::endl;
-		}
 		if (listOfDistances[i].second > maxFreq && listOfDistances[i].first != 0 && listOfDistances[i].first > 551*1.2) {
 			maxDist = listOfDistances[i].first;
 			maxFreq = listOfDistances[i].second;
 		}
 	}
-	std::cout << "most frequent distance: " << maxDist << std::endl;
 	bpm = (44100.0/(maxDist*16))*60;
-	std::cout << "bpm: " << bpm << std::endl;
 	return bpm;
 }
 double getBPMLowPass(const std::vector<ChannelType>& channels, int sampleRate) {
