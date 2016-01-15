@@ -160,6 +160,9 @@ int main(int argc, char *argv[])
 		counter++;
 	}
 
+	/*double bpm2 = getBPMDWT(channels, chunk1Header->sampleRate);
+	getOffset(channels, bpm2);
+	return 0;*/
 	std::cout << std::endl << "Starting BPM processing..." << std::endl;
 	double bpm = getBPMDWT(channels, chunk1Header->sampleRate);
 	std::cout << "Got bpm: " << std::to_string(bpm) << std::endl;
@@ -195,6 +198,49 @@ int main(int argc, char *argv[])
 	std::cout << "Song length (seconds): " << std::to_string(songLen) << std::endl;
 	generateBaseSteps(pathToStepmania + "/Creations/" + songName + "/" + songName + ".sm",songLen,bpm);
 	return 0;
+}
+
+float getOffset(const std::vector<ChannelType>& channels, float bpm) {
+	int sampleRate = 44100;
+	std::cout << "Starting offset search." << std::endl;
+	std::vector<ChannelType> tmpChannels = channels;
+	std::cout << "Applying low pass filter." << std::endl;
+	BiquadFilter *filt1 = new BiquadFilter();
+	BiquadFilter *filt2 = new BiquadFilter();
+	filt1->setBiquad(200/((float)sampleRate),0.707);
+	filt2->setBiquad(200/((float)sampleRate),0.707);
+	for (long int i = 0; i < tmpChannels[0].size() && i < tmpChannels[1].size(); i++) {
+		float tmp;
+		tmp = (float)tmpChannels[0][i];
+		tmp = filt1->process(tmp);
+		tmpChannels[0][i] = tmp;
+		tmp = (float)tmpChannels[1][i];
+		tmp = filt2->process(tmp);
+		tmpChannels[1][i] = tmp;
+	}
+	//take first 5 seconds, get average, look for peak that is beat
+	long double count = 0;
+	long double num = 0;
+	for (long int i = 0; i < 5*44100; i++) {
+		if (channels[0][i] > 10) {
+			count += channels[0][i];
+			num++;
+		}
+	}
+	count /= num;
+	std::cout << "Average over 5 seconds: " << std::to_string(count) << std::endl;
+	int beat = 0;
+	for (long int i = 0; i < 5*44100; i++) {
+		if (channels[0][i] > count*1.1) {
+			beat = i;
+		}
+	}
+	float offset = (beat/44100.0);
+	while (offset - (bpm/60.0) > 0) {
+		offset -= (bpm/60.0);
+	}
+	std::cout << "Found offset: " << std::to_string(offset) << std::endl;
+
 }
 
 float getBPMDWT(const std::vector<ChannelType>& channels, int sampleRate) {

@@ -12,6 +12,7 @@
 #include "datatypes.h"
 #include "third/wavelet2d.h"
 
+float getOffset(const std::vector<ChannelType>& channels, float bpm);
 float getBPMDWT(const std::vector<ChannelType> &channels, int sampleRate);
 double getBPMLowPass(const std::vector<ChannelType> &channels, int sampleRate);
 double calcMostCommon(std::map<double,long int>& hist);
