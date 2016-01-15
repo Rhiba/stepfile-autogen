@@ -160,12 +160,10 @@ int main(int argc, char *argv[])
 		counter++;
 	}
 
-	/*double bpm2 = getBPMDWT(channels, chunk1Header->sampleRate);
-	getOffset(channels, bpm2);
-	return 0;*/
 	std::cout << std::endl << "Starting BPM processing..." << std::endl;
 	double bpm = getBPMDWT(channels, chunk1Header->sampleRate);
 	std::cout << "Got bpm: " << std::to_string(bpm) << std::endl;
+	float offset = getOffset(channels,bpm);
 	if (testingMode == testMode::createTestWav) {
 		//Write collected data out to a new wav file to test we read it correctly
 		std::cout << "Creating test WAV." << std::endl;
@@ -193,7 +191,7 @@ int main(int argc, char *argv[])
 	std::cout << "Setting artist: " << artist << std::endl;
 	makeDirs(pathToStepmania, songName);
 	copyAudio(audioPath,pathToStepmania,songName);
-	generateStepHeader(pathToStepmania,songName, bpm, artist, songName + extension,-0.675);
+	generateStepHeader(pathToStepmania,songName, bpm, artist, songName + extension,-offset);
 	float songLen = channels[0].size() / 44100.0;
 	std::cout << "Song length (seconds): " << std::to_string(songLen) << std::endl;
 	generateBaseSteps(pathToStepmania + "/Creations/" + songName + "/" + songName + ".sm",songLen,bpm);
@@ -240,7 +238,7 @@ float getOffset(const std::vector<ChannelType>& channels, float bpm) {
 		offset -= (bpm/60.0);
 	}
 	std::cout << "Found offset: " << std::to_string(offset) << std::endl;
-
+	return offset;
 }
 
 float getBPMDWT(const std::vector<ChannelType>& channels, int sampleRate) {
