@@ -52,6 +52,19 @@ int generateBaseSteps(std::string pathToSMFile, double lengthOfSong, double bpm)
 	std::ofstream file;
 	file.open(pathToSMFile, std::ios::app);
 
+	sqlite3 *db;
+	char *zErrMsg = 0;
+	int rc;
+
+	rc = sqlite3_open("step-database.db", &db);
+	if (rc) {
+		std::cout << "Uh oh - database not open! Aborting..." << std::endl;
+		exit(1);
+	} else {
+		std::cout << "Database open." << std::endl;
+	}
+	sqlite3_close(db);
+
 	double beats = lengthOfSong * (bpm/60.0);
 	int measures = floor(beats);
 	std::cout << "Number of measures (at 4 beats/measure): " << std::to_string(measures/4) << std::endl;

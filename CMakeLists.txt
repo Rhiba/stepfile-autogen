@@ -9,4 +9,7 @@ file(GLOB SOURCES "src/*.cpp" "src/third/*.cpp")
 
 add_executable(processAudio ${SOURCES})
 
-target_link_libraries(processAudio fftw3)
+target_link_libraries(processAudio 
+	fftw3
+	sqlite3
+	)
