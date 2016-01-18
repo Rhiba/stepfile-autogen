@@ -55,13 +55,37 @@ int generateBaseSteps(std::string pathToSMFile, double lengthOfSong, double bpm)
 	sqlite3 *db;
 	char *zErrMsg = 0;
 	int rc;
+	int row = 0;
 
-	rc = sqlite3_open("step-database.db", &db);
+	rc = sqlite3_open("step-database", &db);
 	if (rc) {
-		std::cout << "Uh oh - database not open! Aborting..." << std::endl;
+		std::cout << "Uh oh - database not open! Please check 'step-database' file exists and is in the current directory. Aborting..." << std::endl;
 		exit(1);
 	} else {
 		std::cout << "Database open." << std::endl;
+	}
+	char *sql;
+	sqlite3_stmt *stmt;
+	sql = "SELECT * FROM patterns";
+	sqlite3_prepare_v2(db,sql,strlen(sql) + 1, &stmt, NULL);
+	while (1) {
+		int s;
+		s = sqlite3_step (stmt);
+		if (s == SQLITE_ROW) {
+			int bytes;
+			const unsigned char * text;
+			bytes = sqlite3_column_bytes(stmt, 4);
+			text  = sqlite3_column_text (stmt, 4);
+			printf ("%d: %s\n", row, text);
+			row++;
+		}
+		else if (s == SQLITE_DONE) {
+			break;
+		}
+		else {
+			fprintf (stderr, "Failed.\n");
+			exit (1);
+		}
 	}
 	sqlite3_close(db);
 
