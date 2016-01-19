@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <sqlite3.h>
 #include <cstring>
+#include <vector>
+#include <algorithm>
 int generateStepHeader(std::string pathToStepmania, std::string songName, double tempo, std::string artist, std::string audioFileName, float offset);
 int copyAudio(std::string audioPath, std::string pathToStepmania, std::string songName);
 int makeDirs(std::string pathToStepmania, std::string songName);

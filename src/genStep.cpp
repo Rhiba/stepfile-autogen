@@ -64,10 +64,11 @@ int generateBaseSteps(std::string pathToSMFile, double lengthOfSong, double bpm)
 	} else {
 		std::cout << "Database open." << std::endl;
 	}
-	char *sql;
 	sqlite3_stmt *stmt;
-	sql = "SELECT * FROM patterns";
+	//for now, getting all patterns
+	char sql[] = "SELECT * FROM patterns";
 	sqlite3_prepare_v2(db,sql,strlen(sql) + 1, &stmt, NULL);
+	std::vector< std::string > patterns;
 	while (1) {
 		int s;
 		s = sqlite3_step (stmt);
@@ -76,14 +77,14 @@ int generateBaseSteps(std::string pathToSMFile, double lengthOfSong, double bpm)
 			const unsigned char * text;
 			bytes = sqlite3_column_bytes(stmt, 4);
 			text  = sqlite3_column_text (stmt, 4);
-			printf ("%d: %s\n", row, text);
+			patterns.push_back((char*)text);
 			row++;
 		}
 		else if (s == SQLITE_DONE) {
 			break;
 		}
 		else {
-			fprintf (stderr, "Failed.\n");
+			std::cout << "Select failed. Aborting..." << std::endl;
 			exit (1);
 		}
 	}
@@ -96,49 +97,24 @@ int generateBaseSteps(std::string pathToSMFile, double lengthOfSong, double bpm)
 	std::cout << "Generating base steps." <<std::endl;
 	file << "\n#NOTES:\n\tdance-single:\n\t:\n\tHard:8\n\t:\n\t:\n";
 	for (int i = 0; i < (measures/4); i++) {
-		int random = rand() % 3 + 1;
-		if (random == 1) {
-			for (int j = 0; j < 4; j++) {
-				int ran = rand() % 4 + 1;
-				if (ran == 1) {
-					file << "1000\n";
-				} else if (ran == 2) {
-					file << "0100\n";
-				} else if (ran == 3) {
-					file << "0010\n";
-				} else {
-					file << "0001\n";
-				}
+		int random = rand() % patterns.size();
+		size_t n = std::count(patterns[random].begin(), patterns[random].end(), ',') + 1;
+		int c = 0;
+		for (int j = 0; j < patterns[random].size(); j++) {
+			if (patterns[random][j] == ',') {
+				file << ",\n";
+				c = 0;
+			} else if (j == patterns[random].size() -1) {
+				file << ",\n";
+				c = 0;
+			} else if (c != 3) {
+				file << patterns[random][j];
+				c++;
+			} else {
+				file << patterns[random][j] << "\n";
+				c = 0;
 			}
-			file << ",\n";
-		} else if (random == 2) {
-			for (int j = 0; j < 8; j++) {
-				int ran = rand() % 4 + 1;
-				if (ran == 1) {
-					file << "1000\n";
-				} else if (ran == 2) {
-					file << "0100\n";
-				} else if (ran == 3) {
-					file << "0010\n";
-				} else {
-					file << "0001\n";
-				}
-			}
-			file << ",\n";
-		} else {
-			for (int j = 0; j < 16; j++) {
-				int ran = rand() % 4 + 1;
-				if (ran == 1) {
-					file << "1000\n";
-				} else if (ran == 2) {
-					file << "0100\n";
-				} else if (ran == 3) {
-					file << "0010\n";
-				} else {
-					file << "0001\n";
-				}
-			}
-			file << ",\n";
 		}
+		i += n;
 	}
 }
