@@ -24,7 +24,9 @@ int makeDirs(std::string pathToStepmania, std::string songName) {
 		std::cout << "yes" << std::endl;
 	}
 }
+
 int copyAudio(std::string audioPath, std::string pathToStepmania, std::string songName) {
+
 	std::ifstream  src(audioPath, std::ios::binary);
 	std::cout << "Copying audio to new folder." << std::endl;
 	std::string extension = "";
@@ -48,7 +50,9 @@ int generateStepHeader(std::string pathToStepmania, std::string songName, double
 	file.open(filename);
 	file << "#TITLE:"+songName+";\n#SUBTITLE:;\n#ARTIST:"+artist+";\n#TITLETRANSLIT:;\n#SUBTITLETRANSLIT:;\n#ARTISTTRANSLIT:;\n#CREDIT:;\n#BANNER:;\n#BACKGROUND:;\n#LYRICSPATH:;\n#CDTITLE:;\n#MUSIC:"+audioFileName+";\n#OFFSET:"+std::to_string(offset)+";\n#SAMPLESTART:45.000;\n#SAMPLELENGTH:12.000;\n#SELECTABLE:YES;\n#BPMS:0.000="+std::to_string(tempo)+";\n#STOPS:;\n#BGCHANGES:;";
 }
+
 int generateBaseSteps(std::string pathToSMFile, double lengthOfSong, double bpm) {
+
 	std::ofstream file;
 	file.open(pathToSMFile, std::ios::app);
 
@@ -56,7 +60,6 @@ int generateBaseSteps(std::string pathToSMFile, double lengthOfSong, double bpm)
 	char *zErrMsg = 0;
 	int rc;
 	int row = 0;
-
 	rc = sqlite3_open("step-database", &db);
 	if (rc) {
 		std::cout << "Uh oh - database not open! Please check 'step-database' file exists and is in the current directory. Aborting..." << std::endl;

@@ -53,7 +53,6 @@ int main(int argc, char *argv[])
 		}
 	}
 	std::ifstream ifs(argv[1], std::ifstream::binary);
-
 	if (!(ifs && ifs.is_open())) {
 		std::cout << "File does not exist, exiting..." << std::endl;
 		exit(0);
