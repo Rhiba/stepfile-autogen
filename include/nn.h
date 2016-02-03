@@ -2,6 +2,8 @@
 #include <cstdlib>
 #include <cmath>
 #include <cassert>
+#include <fstream>
+#include <iostream>
 
 struct Connection {
 	double weight;
@@ -41,6 +43,7 @@ class Net
 		void forward(const std::vector<double> &inputVals);
 		void back(const std::vector<double> &targetVals);
 		void results(std::vector<double> &resultVals) const;
+		double getRecentAvErr(void) { return recentAvError; };
 
 	private:
 	std::vector<Layer> layers;
