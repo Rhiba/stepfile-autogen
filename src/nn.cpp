@@ -2,35 +2,67 @@
 
 int main() {
 	std::vector<int> topology;
-	topology.push_back(2); //2 inputs
-	topology.push_back(2); //2 hidden nodes
+	topology.push_back(10); //2 inputs
+	topology.push_back(5); //2 hidden nodes
 	topology.push_back(1); //1 output
 	Net nn(topology);
 
-	std::ifstream infile("testdata");
-
-	int pass = 1;
-	double a, b, res;
-	while (infile >> a >> b >> res) {
-		std::cout << "Pass: " << pass << std::endl;
+	std::ifstream infile("songdata.txt");
+	std::string line;
+	int pass = 0;
+	while (std::getline(infile,line)) {
 		pass++;
-		std::cout << "Inputs: " << a << " " << b << std::endl;
+		size_t pos = 0;
+		std::string token;
+		int counter = 0;
 		std::vector<double> inputVals;
-		inputVals.push_back(a);
-		inputVals.push_back(b);
-		nn.forward(inputVals);
-		std::cout << "Target: " << res << std::endl;
-
 		std::vector<double> resultsVals;
-		nn.results(resultsVals);
-		std::cout << "Actual: " << resultsVals[0] << std::endl;
-
 		std::vector<double> targetVals;
-		targetVals.push_back(res);
+		while ((pos = line.find(' ')) != std::string::npos) {
+			token = line.substr(0, pos);
+			if (counter == 0) {
+				targetVals.push_back(std::stod(token));
+			} else {
+				inputVals.push_back(std::stod(token));
+			}
+			counter++;
+			line.erase(0, pos + 1);
+		}
+		std::cout << "size of input list: " << inputVals.size() << std::endl;
+		std::cout << "Pass: " << pass << std::endl;
+		nn.forward(inputVals);
+		std::cout << "Target: " << (targetVals[0]*(20-1) + 1) << std::endl;
+		nn.results(resultsVals);
+		std::cout << "Actual: " << (resultsVals[0]*(20-1) + 1) << std::endl;
 		nn.back(targetVals);
 		std::cout << "Recent err: " << nn.getRecentAvErr() << std::endl << std::endl;
-
 	}
+
+	/*
+	   int pass = 1;
+	   double a, b, res;
+	   while (infile >> a >> b >> res) {
+	   std::cout << "Pass: " << pass << std::endl;
+	   pass++;
+	   std::cout << "Inputs: " << a << " " << b << std::endl;
+	   std::vector<double> inputVals;
+	   inputVals.push_back(a);
+	   inputVals.push_back(b);
+	   nn.forward(inputVals);
+	   std::cout << "Target: " << res << std::endl;
+
+	   std::vector<double> resultsVals;
+	   nn.results(resultsVals);
+	   std::cout << "Actual: " << resultsVals[0] << std::endl;
+
+	   std::vector<double> targetVals;
+	   targetVals.push_back(res);
+	   nn.back(targetVals);
+	   std::cout << "Recent err: " << nn.getRecentAvErr() << std::endl << std::endl;
+	   std::cout << nn.getRecentAvErr() << std::endl;
+
+	   }
+	   */
 }
 
 Net::Net(const std::vector<int> &topology) { //checked
@@ -124,13 +156,13 @@ double Neuron::sumDOW(const Layer &nextLayer) const { //checked
 double Neuron::eta = 0.2;
 double Neuron::alpha = 0.5;
 void Neuron::updateInputWeights(Layer &prevLayer) { //checked
-	
+
 	for (int n = 0; n < prevLayer.size(); ++n) {
 		Neuron &neuron = prevLayer[n];
 		double oldDelta = neuron.outputWeights[idx].deltaWeight;
 		double newDelta = eta * neuron.getOutputVal() * gradient + alpha * oldDelta;
 		neuron.outputWeights[idx].deltaWeight = newDelta;
-		neuron.outputWeights[idx].weight += newDelta;
+		neuron.outputWeights[idx].weight += newDelta; // I HATE THIS PLUS EQUALS
 	}
 }
 double Neuron::transfer(double x) {
