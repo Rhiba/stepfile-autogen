@@ -193,7 +193,7 @@ int main(int argc, char *argv[])
 	generateStepHeader(pathToStepmania,songName, bpm, artist, songName + extension,-offset);
 	float songLen = channels[0].size() / 44100.0;
 	std::cout << "Song length (seconds): " << std::to_string(songLen) << std::endl;
-	generateBaseSteps(pathToStepmania + "/Creations/" + songName + "/" + songName + ".sm",songLen,bpm);
+	generateMarkovSteps(pathToStepmania + "/Creations/" + songName + "/" + songName + ".sm",songLen,bpm);
 	return 0;
 }
 

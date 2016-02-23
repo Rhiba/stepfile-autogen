@@ -121,3 +121,131 @@ int generateBaseSteps(std::string pathToSMFile, double lengthOfSong, double bpm)
 		i += n;
 	}
 }
+int generateMarkovSteps(std::string pathToSMFile, double lengthOfSong, double bpm) {
+	std::map< std::string, std::map< std::string, double > > probs;
+	std::string line;
+	std::ifstream myfile ("prob.txt");
+	int lineCount = 0;
+	bool readingProbs = false;
+	std::string currKey = "";
+	std::map< std::string, double > currMap;
+	int mk = 0;
+	if (myfile.is_open())
+	{
+		while ( getline (myfile,line) )
+		{
+			if (lineCount == 0) {
+				//found the markov number
+				mk = std::stoi(line);
+			} else {
+				if (line.empty()) {
+				} else {
+					if (line[line.length()-1] == ':' && readingProbs == false) {
+						readingProbs = true;
+						currKey = line.substr(0,line.length()-1);
+						currMap.clear();
+					} else if (line[line.length()-1] == ';') {
+						readingProbs = false;
+						probs[currKey] = currMap;
+					} else if (readingProbs == true) {
+						currMap[line.substr(0,4)] = std::stod(line.substr(6,line.length()));
+					}
+				}
+			}
+			lineCount++;
+		}
+		myfile.close();
+	}
+	//now test it worked
+	/*
+	for (std::map< std::string, std::map< std::string, double > >::iterator it=probs.begin(); it!=probs.end(); ++it) {
+		std::cout << it->first << ":" << std::endl;
+		for (std::map< std::string, double >::iterator it2=it->second.begin(); it2!=it->second.end(); ++it2) {
+			std::cout << it2->first << ": " << it2->second << std::endl;
+		}
+	}
+	*/
+
+	std::ofstream file;
+	file.open(pathToSMFile, std::ios::app);
+	double beats = lengthOfSong * (bpm/60.0);
+	int measures = floor(beats);
+	std::cout << "Number of measures (at 4 beats/measure): " << std::to_string(measures/4) << std::endl;
+
+	std::cout << "Generating base steps." <<std::endl;
+	file << "\n#NOTES:\n\tdance-single:\n\t:\n\tHard:8\n\t:\n\t:\n";
+	int random = rand() % probs.size();
+	std::map<std::string, std::map< std::string, double > >::iterator i1( probs.begin() );
+	std::advance( i1, random );
+	std::string prevPatt = i1->first;
+	file << i1->first;
+	int count = 0;
+	int fin = rand() % 3;
+	int end = 0;
+	if (fin == 1) {
+		end = 8;
+	} else if (fin == 2) {
+		end = 16;
+	} else if (fin == 3) {
+		end = 32;
+	} else {
+		end = 64;
+	}
+	std::cout << "end: " << end << std::endl;
+	int i = 0;
+	bool finished = false;
+	bool finishing = false;
+	while (i < measures/4 || !finished) {
+		if (i >= measures/4) {
+			finishing = true;
+		}
+		if (count == end) {
+			if (finishing = true) {
+				finished = true;
+				break;
+			}
+			i++;
+			file << ",";
+			fin = rand() % 4;
+			if (fin == 1) {
+				end = 8;
+			} else if (fin == 2) {
+				end = 16;
+			} else if (fin == 3) {
+				end = 32;
+			} else {
+				end = 64;
+			}
+			count = 0;
+		}
+		std::map< std::string, double > currProbs;
+		if (probs.find(prevPatt) != probs.end()) {
+			currProbs = probs[prevPatt];
+		} else {
+			random = rand() % probs.size();
+			std::map<std::string, std::map< std::string, double > >::iterator i2( probs.begin() );
+			std::advance( i2, random );
+			currProbs = i2->second;
+		}
+
+		//extract random event based on probability here
+		std::string patternChosen = "";
+		const double eps = 1e-9;
+		double r=((double)rand())/(RAND_MAX); // alternatively here there can be any function that
+		// generates a random number uniformly distribute in (0,1);
+		for (std::map< std::string, double >::iterator it=currProbs.begin(); it!=currProbs.end(); ++it) {
+			r -= it->second;
+			if (r < eps) {
+				patternChosen = it->first;
+				//for now, replace 3's
+				std::replace( patternChosen.begin(), patternChosen.end(), '3', '1');
+				std::replace( patternChosen.begin(), patternChosen.end(), '2', '1');
+				file << patternChosen;
+				break;
+			}
+		}
+		prevPatt = prevPatt.substr(4,prevPatt.length()) + patternChosen;
+		count++;
+	}
+	file << ";";
+}
