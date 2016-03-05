@@ -4,7 +4,7 @@ int makeDirs(std::string pathToStepmania, std::string songName) {
 	struct stat st = {0};
 	struct stat st2 = {0};
 
-	std::string creationsPath = pathToStepmania + "/Creations";
+    std::string creationsPath = pathToStepmania + "/Creations";
 	const char* createName = creationsPath.c_str();
 	std::cout << "Checking if /Creations folder exists... ";
 	if (stat(createName, &st2) == -1) {

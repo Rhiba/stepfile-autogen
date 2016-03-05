@@ -1,7 +1,6 @@
 cmake_minimum_required (VERSION 2.6)
 project (processAudio)
 set(CMAKE_CXX_FLAGS "-O0 --std=c++11 -I/dcs/13/csuneh/3YP/stepfile-autogen/third/fftw/include -L/dcs/13/csuneh/3YP/stepfile-autogen/third/fftw/lib")
-set(CMAKE_CXX_COMPILER /bin/g++)
 
 include_directories(include)
 
